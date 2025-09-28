@@ -1,0 +1,17 @@
+id: default-java-service
+name: Default DoD for Java Service
+requirements:
+  - type: PR_MERGED
+    provider: github
+    branch: main
+  - type: CI_GREEN
+    provider: github-actions
+    workflow: build.yml
+  - type: DOC_PUBLISHED
+    urlPattern: "^https://docs\.meuapp\.io/.*"
+  - type: LOG_SEEN
+    query: "message:StartedApp AND correlationId:{task.correlationId}"
+    minCount: 1
+  - type: FLAG_ENABLED
+    flagKey: "feature.{task.key}"
+    minPercentage: 10
