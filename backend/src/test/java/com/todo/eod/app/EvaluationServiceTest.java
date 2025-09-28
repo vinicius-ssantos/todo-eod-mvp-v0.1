@@ -1,6 +1,9 @@
 package com.todo.eod.app;
 
-import com.todo.eod.domain.*;
+import com.todo.eod.domain.DodPolicy;
+import com.todo.eod.domain.Evidence;
+import com.todo.eod.domain.EvidenceType;
+import com.todo.eod.domain.Task;
 import com.todo.eod.infra.repo.EvidenceRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -19,7 +22,9 @@ public class EvaluationServiceTest {
         var svc = new EvaluationService(repo);
         var policy = DodPolicy.builder()
                 .name("policy")
-                .spec("{"requirements":[{"type":"PR_MERGED"},{"type":"CI_GREEN"}]}")
+                .spec("""
+                        {"requirements":[{"type":"PR_MERGED"},{"type":"CI_GREEN"}]}
+                        """)
                 .build();
         var task = Task.builder().dodPolicy(policy).build();
         when(repo.findByTask(task)).thenReturn(List.of(
@@ -36,7 +41,9 @@ public class EvaluationServiceTest {
         var svc = new EvaluationService(repo);
         var policy = DodPolicy.builder()
                 .name("policy")
-                .spec("{"requirements":[{"type":"PR_MERGED"},{"type":"CI_GREEN"}]}")
+                .spec("""
+                        {"requirements":[{"type":"PR_MERGED"},{"type":"CI_GREEN"}]}
+                        """)
                 .build();
         var task = Task.builder().dodPolicy(policy).build();
         when(repo.findByTask(task)).thenReturn(List.of(Evidence.builder().type(EvidenceType.PR_MERGED).build()));
