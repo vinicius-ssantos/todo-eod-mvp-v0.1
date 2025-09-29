@@ -1,0 +1,66 @@
+name: Setup Branch Protection
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to protect"
+        default: "main"
+        required: true
+
+jobs:
+  protect:
+    name: Apply protection rules
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate secret
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.ADMIN_TOKEN }}" ]; then
+            echo "::error::Missing ADMIN_TOKEN repository secret. Create one with a PAT that has repo admin permissions."
+            exit 1
+          fi
+
+      - name: Configure branch protection via API
+        env:
+          TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          BRANCH: ${{ github.event.inputs.branch }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Configuring protection for $OWNER/$REPO@$BRANCH"
+          data=$(cat <<'JSON'
+          {
+            "required_status_checks": {
+              "strict": true,
+              "contexts": [
+                "Validate PR title and branch",
+                "Commit Message Lint"
+              ]
+            },
+            "enforce_admins": true,
+            "required_pull_request_reviews": {
+              "required_approving_review_count": 1,
+              "dismiss_stale_reviews": true,
+              "require_last_push_approval": false,
+              "require_code_owner_reviews": false
+            },
+            "restrictions": null,
+            "required_linear_history": true,
+            "allow_force_pushes": false,
+            "allow_deletions": false,
+            "block_creations": false,
+            "required_conversation_resolution": true,
+            "lock_branch": false,
+            "allow_fork_syncing": true
+          }
+JSON
+          )
+          curl -sS -X PUT \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$OWNER/$REPO/branches/$BRANCH/protection" \
+            -d "$data" | tee response.json
+          echo "Response status contexts configured; adjust contexts in settings if names differ (they must match the check contexts)."
