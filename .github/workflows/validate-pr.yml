@@ -8,7 +8,12 @@ jobs:
   pr-lint:
     name: PR Lint
     runs-on: ubuntu-latest
-    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
+    # Skip for bot-created auto PRs and dependency bots
+    if: >-
+      github.actor != 'dependabot[bot]' &&
+      github.actor != 'renovate[bot]' &&
+      github.actor != 'github-actions[bot]' &&
+      !startsWith(github.event.pull_request.title, 'ci: auto PR for ')
     steps:
       - name: Validate PR title
         shell: bash
