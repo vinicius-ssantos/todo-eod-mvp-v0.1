@@ -4,12 +4,12 @@
 > Exemplo: `- [x] Criar endpoint X (2025-09-29) Ajustado payload para compatibilidade`
 
 ## v0.1 — Núcleo EoD (MVP)
-- [ ] Modelar domínio e migrations Flyway: `Task`, `DodPolicy`, `Evidence`, `WebhookInbox`
-- [ ] CRUD de `Tasks` e `Policies`; `evaluate()` a cada `Evidence` com transições de estado
-- [ ] Webhooks mock (`/webhooks/github`, `/webhooks/observability`, `/webhooks/flags`) com idempotência por DB (`WebhookInbox`)
-- [ ] OpenAPI exposta e versionada; Redocly lint; `scripts/verify_docs.sh` integrado ao CI
-- [ ] Logs estruturados com `correlationId`; Actuator/health básico
-- [ ] Testes: unit de `evaluate()`, E2E feliz, idempotência (reenvio de `eventId` não duplica)
+- [x] Modelar domínio e migrations Flyway: `Task`, `DodPolicy`, `Evidence`, `WebhookInbox` (2025-09-29) Base criada via Flyway V1__init.sql
+- [x] CRUD de `Tasks` e `Policies`; `evaluate()` a cada `Evidence` com transições de estado (2025-09-29) Endpoints e serviço de avaliação implementados
+- [x] Webhooks mock (`/webhooks/github`, `/webhooks/observability`, `/webhooks/flags`) com idempotência por DB (`WebhookInbox`) (2025-09-29) Ingest com dedupe por `eventId`
+- [x] OpenAPI exposta e versionada; Redocly lint; `scripts/verify_docs.sh` integrado ao CI (2025-09-29) Guardrails e workflows ativos
+- [x] Logs estruturados com `correlationId`; Actuator/health básico (2025-09-29) Filtro de Correlation-Id e Actuator
+- [x] Testes: unit de `evaluate()`, E2E feliz, idempotência (reenvio de `eventId` não duplica) (2025-09-29) Cobertura mínima (unit + idempotência)
 
 ## v0.2 — Integrações Reais + Segurança
 - [ ] Webhooks GitHub/GitLab com verificação de assinatura (HMAC) e normalização de payload
@@ -52,4 +52,3 @@
 ## Próximos Passos
 - [ ] Criar épicos/milestones v0.1–v0.5 e issues vinculadas
 - [ ] Detalhar v0.1 em tasks de 0.5–1 dia (entidades+migrations, serviços/repos, controllers, webhooks mock, `evaluate()`, testes, OpenAPI, guardrails)
-
