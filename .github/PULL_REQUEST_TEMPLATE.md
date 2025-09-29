@@ -1,4 +1,9 @@
- # Summary
+# Title & Branch
+
+<!-- Title format: type(scope): short summary  -->
+<!-- Branch format: type/short-kebab-summary (e.g., feat/add-agents-md) -->
+
+# Summary
  
  <!-- Briefly describe the purpose and scope of this PR. -->
  
@@ -34,12 +39,14 @@
  
  ---
  
- ## Checklist
- - [ ] Clear summary and context provided
- - [ ] Linked issues (e.g., Closes #123)
- - [ ] Tests added/updated and pass `./mvnw verify`
- - [ ] Docs updated (README/AGENTS.md/OpenAPI if API changed)
- - [ ] DB migrations added if needed (Flyway `db/migration`)
+## Checklist
+- [ ] PR title follows `type(scope): summary`
+- [ ] Branch name follows `type/short-kebab-summary`
+- [ ] Clear summary and context provided
+- [ ] Linked issues (e.g., Closes #123)
+- [ ] Tests added/updated and pass `./mvnw verify`
+- [ ] Docs updated (README/AGENTS.md/OpenAPI if API changed)
+- [ ] DB migrations added if needed (Flyway `db/migration`)
  - [ ] No secrets committed; logs avoid sensitive data
  - [ ] Backward compatibility considered (breaking changes documented)
  
