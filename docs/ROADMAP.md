@@ -52,3 +52,48 @@
 ## Próximos Passos
 - [ ] Criar épicos/milestones v0.1–v0.5 e issues vinculadas
 - [ ] Detalhar v0.1 em tasks de 0.5–1 dia (entidades+migrations, serviços/repos, controllers, webhooks mock, `evaluate()`, testes, OpenAPI, guardrails)
+
+## Testes — Roadmap
+
+> Regra de marcação: ao concluir um item, troque [ ] por [x], acrescente a data no formato AAAA-MM-DD e, se necessário, uma anotação breve no final.
+> Exemplo: `- [x] Criar endpoint X (2025-09-29) Ajustado payload para compatibilidade`
+
+- Unidade — EvaluationService
+  - [x] Requisitos básicos PR_MERGED/CI_GREEN (2025-09-29)
+  - [x] FLAG_ENABLED com minPercentage (2025-09-29)
+  - [ ] DOC_PUBLISHED com urlPattern
+  - [ ] LOG_SEEN com minCount
+  - [ ] Especificação inválida/JSON quebrado não explode; retorna incomplete
+
+- Unidade — WebhookIngestService
+  - [x] Idempotência por eventId (2025-09-29)
+  - [x] Task inexistente → erro (2025-09-29)
+  - [x] Persistir Evidence mesmo com payload não serializável (2025-09-29) armazena `{}`
+  - [x] REVIEW→VERIFICATION com PR_MERGED/CI_GREEN (2025-09-29)
+  - [x] DONE quando DoD completa + persistência (2025-09-29)
+
+- Web (MockMvc)
+  - [x] POST /tasks 201 + Location (2025-09-29)
+  - [x] POST /tasks validação 400 (2025-09-29)
+  - [ ] GET /tasks aplica filtros state/assignee/label
+  - [x] GET /dod-policies lista (2025-09-29)
+  - [x] POST /webhooks/github feliz (2025-09-29)
+  - [ ] POST /webhooks duplicado (idempotência) retorna 202/accepted
+
+- Integração (DB/JPA)
+  - [ ] TaskRepository.search com filtros (Testcontainers Postgres)
+  - [ ] ElementCollection labels persiste/consulta ok
+  - [ ] jsonb em DodPolicy/Evidence persiste/consulta ok
+  - [ ] Flyway aplica V1__init.sql sem erros
+
+- E2E (Fluxo DoD)
+  - [ ] Cria task → envia webhooks → DONE
+  - [ ] Reenvio de eventId não duplica evidências
+
+- Contrato (Webhooks)
+  - [ ] Payload mínimo aceita/valida campos obrigatórios
+  - [ ] Campos inválidos resultam em 400
+
+- Observabilidade
+  - [x] Logs JSON com correlationId no MDC (2025-09-29)
+  - [ ] Métricas (quando disponíveis) expostas em /actuator/metrics
