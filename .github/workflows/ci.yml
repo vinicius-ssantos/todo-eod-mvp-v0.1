@@ -45,7 +45,6 @@ jobs:
           set -euo pipefail
           VER=$(mvn -q -f backend/pom.xml help:evaluate -Dexpression=project.version -DforceStdout)
           BASEVER=${VER%-SNAPSHOT}
-
           echo "Project version: $VER (base: $BASEVER)"
           CANDIDATES=("docs/openapi/openapi-${VER}.json")
           if [[ "$VER" != "$BASEVER" ]]; then
