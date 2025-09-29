@@ -1,0 +1,57 @@
+name: Commit Message Lint
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  lint:
+    name: Lint commit messages
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
+    steps:
+      - name: Fetch PR commits
+        id: fetch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          OWNER="${REPO%%/*}"
+          NAME="${REPO##*/}"
+          curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+               -H "Accept: application/vnd.github+json" \
+               "https://api.github.com/repos/$OWNER/$NAME/pulls/$PR_NUMBER/commits" > commits.json
+          echo "count=$(jq 'length' commits.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Validate commit subjects
+        shell: bash
+        run: |
+          re='^(feat|fix|docs|test|refactor|chore|ci|build|perf|style)(\([a-z0-9\-]+\))?: .{6,}$'
+          FAIL=0
+          mapfile -t messages < <(jq -r '.[] | .commit.message' commits.json)
+          i=0
+          for msg in "${messages[@]}"; do
+            i=$((i+1))
+            first_line="${msg%%$'\n'*}"
+            if [[ "$first_line" =~ ^(Merge|Revert) ]]; then
+              echo "Skipping commit $i (merge/revert): $first_line"
+              continue
+            fi
+            if [[ ! $first_line =~ $re ]]; then
+              echo "::error title=Invalid commit message::[$i] $first_line"
+              echo "Expected: type(scope): short summary (scope optional)."
+              echo "Allowed types: feat, fix, docs, test, refactor, chore, ci, build, perf, style."
+              FAIL=1
+            else
+              echo "OK [$i] $first_line"
+            fi
+          done
+          if [[ $FAIL -ne 0 ]]; then
+            exit 1
+          fi
+
