@@ -161,3 +161,6 @@ Issues/PRs são bem-vindos. Abra um PR com descrição clara, testes e atualiza�
 
 ## Licença
 MIT. Use livremente para estudo/portfólio.
+
+Java: 21
+Spring Boot: 3.3.4

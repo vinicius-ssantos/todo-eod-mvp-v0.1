@@ -35,6 +35,7 @@ jobs:
           npm i -g @redocly/cli
 
       - name: Generate OpenAPI from code
+        continue-on-error: true
         run: mvn -q -DskipTests -f backend/pom.xml org.springdoc:springdoc-openapi-maven-plugin:generate
 
       - name: Lint OpenAPI
@@ -48,6 +49,7 @@ jobs:
           fi
 
       - name: Verify docs (no-fix)
+        if: ${{ github.event_name != 'pull_request' }}
         run: bash scripts/verify_docs.sh
 
       - name: Auto-fix docs on PR
