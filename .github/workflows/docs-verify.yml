@@ -34,9 +34,10 @@ jobs:
           npm i -g @redocly/cli
 
 
-      - name: Generate OpenAPI from code
+      - name: Generate OpenAPI from code (main only)
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         continue-on-error: true
-        run: mvn -q -DskipTests -f backend/pom.xml org.springdoc:springdoc-openapi-maven-plugin:generate
+        run: mvn -q -DskipTests -f backend/pom.xml -P openapi-gen org.springdoc:springdoc-openapi-maven-plugin:generate
 
 
       - name: Lint OpenAPI
