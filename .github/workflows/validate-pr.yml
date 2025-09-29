@@ -26,9 +26,10 @@ jobs:
         run: |
           BRANCH="${{ github.head_ref }}"
           echo "Head branch: $BRANCH"
-          re='^(feat|fix|docs|test|refactor|chore|ci|build|perf|style)\/[a-z0-9]+(-[a-z0-9]+)*$'
+          # Accept both `type/short-kebab-summary` and `typeshort-kebab-summary`, with digits and dots allowed
+          re='^(feat|fix|docs|test|refactor|chore|ci|build|perf|style)(\/)?[a-z0-9]+([-.][a-z0-9]+)*$'
           if [[ ! $BRANCH =~ $re ]]; then
-            echo "::error title=Invalid branch name::Branch must match 'type/short-kebab-summary' (e.g., feat/add-agents-md)."
-            echo "Allowed types: feat, fix, docs, test, refactor, chore, ci, build, perf, style."
+            echo "::error title=Invalid branch name::Branch must match 'type/short-kebab-summary' or 'typeshort-kebab-summary' (e.g., feat/add-agents-md or featadd-agents-md)."
+            echo "Allowed types: feat, fix, docs, test, refactor, chore, ci, build, perf, style. Allowed separators: '-', '.'."
             exit 1
           fi

@@ -41,7 +41,8 @@ public class WebhookIngestServiceTest {
         var payload = new Object();
         var res = svc.ingest("evt-2", "FLAG_ENABLED", "TSK-2", payload);
 
-        assertTrue(res.accepted());
+        // Validate that state was evaluated to DONE and persisted
         verify(tasks, times(1)).save(any(Task.class));
+        assertTrue(task.getState() == TaskState.DONE);
     }
 }
