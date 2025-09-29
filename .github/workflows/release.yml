@@ -1,0 +1,95 @@
+name: Release on tag
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Determine versions
+        id: ver
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          VER="${TAG#v}"
+          POM_VER=$(mvn -q -f backend/pom.xml help:evaluate -Dexpression=project.version -DforceStdout)
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "pom_version=$POM_VER" >> "$GITHUB_OUTPUT"
+          echo "Tag: $TAG ; Version: $VER ; POM: $POM_VER"
+          if [[ "$POM_VER" == *-SNAPSHOT ]]; then
+            echo "::error title=Snapshot version::POM version $POM_VER is a SNAPSHOT for release tag $TAG. Bump POM to $VER before tagging."
+            exit 1
+          fi
+          if [[ "$POM_VER" != "$VER" ]]; then
+            echo "::error title=Version mismatch::Tag version $VER != POM version $POM_VER"
+            exit 1
+          fi
+
+      - name: Build backend
+        run: mvn -B -ntp -f backend/pom.xml clean verify
+
+      - name: Locate artifacts
+        id: artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          VER="${{ steps.ver.outputs.version }}"
+          JAR="backend/target/eod-backend-${VER}.jar"
+          if [[ ! -f "$JAR" ]]; then
+            JAR=$(ls backend/target/*"${VER}".jar | head -n1 || true)
+          fi
+          if [[ -z "${JAR:-}" || ! -f "$JAR" ]]; then
+            echo "::error title=Jar not found::Expected backend/target/*${VER}.jar"
+            ls -la backend/target || true
+            exit 1
+          fi
+          SPEC="docs/openapi/openapi-${VER}.json"
+          if [[ ! -f "$SPEC" ]]; then
+            echo "::error title=Missing OpenAPI::$SPEC not found. Commit spec before tagging."
+            exit 1
+          fi
+          echo "jar=$JAR" >> "$GITHUB_OUTPUT"
+          echo "spec=$SPEC" >> "$GITHUB_OUTPUT"
+
+      - name: Checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum "${{ steps.artifacts.outputs.jar }}" "${{ steps.artifacts.outputs.spec }}" | tee SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: |
+            ${{ steps.artifacts.outputs.jar }}
+            ${{ steps.artifacts.outputs.spec }}
+            SHA256SUMS.txt
