@@ -1,0 +1,61 @@
+name: Auto Build & PR
+
+on:
+  push:
+    branches-ignore:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  build-and-pr:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Build & test (backend)
+        run: mvn -B -ntp -DskipTests=false -f backend/pom.xml verify
+
+      - name: Create/Update PR to main
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const ref = context.ref || '';
+            const branch = ref.replace('refs/heads/', '');
+            if (!branch || branch === 'main') {
+              core.info('Skipping PR creation on main');
+              return;
+            }
+            const title = `ci: auto PR for ${branch}`;
+            const body = [
+              `Auto-generated PR for branch ${branch}.`,
+              '',
+              'This PR was opened after a successful build to ensure changes are reviewed before merging to main.'
+            ].join('\n');
+
+            // Check for existing open PR from this branch to main
+            const prs = await github.rest.pulls.list({ owner, repo, state: 'open', head: `${owner}:${branch}`, base: 'main' });
+            if (prs.data && prs.data.length > 0) {
+              core.info(`PR already exists: #${prs.data[0].number}`);
+              return;
+            }
+
+            const res = await github.rest.pulls.create({ owner, repo, title, body, head: branch, base: 'main' });
+            core.info(`Created PR #${res.data.number}`);
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
