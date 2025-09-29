@@ -43,18 +43,19 @@ public class WebhookIngestService {
         Task task = ot.get();
 
         EvidenceType eType = EvidenceType.valueOf(type);
+        String payloadJson;
         try {
-            String payloadJson = om.writeValueAsString(payload);
-            evidenceRepository.save(Evidence.builder()
-                    .task(task)
-                    .type(eType)
-                    .source(sourceFor(eType))
-                    .payload(payloadJson)
-                    .createdAt(OffsetDateTime.now())
-                    .build());
+            payloadJson = om.writeValueAsString(payload);
         } catch (Exception e) {
-            return IngestResult.error("invalid payload");
+            payloadJson = "{}"; // tolerate odd payloads; still proceed to evaluation
         }
+        evidenceRepository.save(Evidence.builder()
+                .task(task)
+                .type(eType)
+                .source(sourceFor(eType))
+                .payload(payloadJson)
+                .createdAt(OffsetDateTime.now())
+                .build());
 
         // State transition hints (simple rules for MVP)
         if (task.getState() == TaskState.REVIEW && (eType == EvidenceType.PR_MERGED || eType == EvidenceType.CI_GREEN)) {
