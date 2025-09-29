@@ -5,7 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and this project adheres to SemVer.
 
 ## [Unreleased]
-- Planned for v0.2.0 and v0.3.0 per roadmap.
+### Added
+- Prepare development for v0.2.0-SNAPSHOT (version bump in backend).
+### Planned
+- Roadmap items for v0.2.0 and v0.3.0.
 
 ## [0.1.0] - 2025-09-28
 ### Added

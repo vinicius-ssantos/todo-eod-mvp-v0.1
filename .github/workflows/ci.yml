@@ -41,15 +41,28 @@ jobs:
 
       - name: Check versioned OpenAPI JSON exists
         run: |
+          set -euo pipefail
           VER=$(mvn -q -f backend/pom.xml help:evaluate -Dexpression=project.version -DforceStdout)
-          FILE="docs/openapi/openapi-${VER}.json"
-          echo "Project version: $VER"
-          if [ ! -f "$FILE" ]; then
-            echo "::error title=Missing OpenAPI file::Expected versioned file $FILE. Generate from /v3/api-docs and commit."
-            echo "Hint: run the app locally (with Postgres up) and: curl -sS http://localhost:8080/v3/api-docs > $FILE"
+          BASEVER=${VER%-SNAPSHOT}
+          echo "Project version: $VER (base: $BASEVER)"
+          CANDIDATES=("docs/openapi/openapi-${VER}.json")
+          if [[ "$VER" != "$BASEVER" ]]; then
+            CANDIDATES+=("docs/openapi/openapi-${BASEVER}.json")
+          fi
+          FOUND=""
+          for f in "${CANDIDATES[@]}"; do
+            if [[ -f "$f" ]]; then
+              echo "Found OpenAPI file: $f"
+              FOUND="$f"
+              break
+            fi
+          done
+          if [[ -z "$FOUND" ]]; then
+            echo "::error title=Missing OpenAPI file::Expected one of: ${CANDIDATES[*]}"
+            echo "Hint: run the app locally and generate from /v3/api-docs."
             exit 1
           fi
-          if ! jq -e . "$FILE" >/dev/null 2>&1; then
-            echo "::error title=Invalid JSON::$FILE is not valid JSON."
+          if ! jq -e . "$FOUND" >/dev/null 2>&1; then
+            echo "::error title=Invalid JSON::$FOUND is not valid JSON."
             exit 1
           fi
