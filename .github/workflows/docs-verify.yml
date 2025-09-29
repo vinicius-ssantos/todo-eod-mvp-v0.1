@@ -34,9 +34,11 @@ jobs:
           sudo apt-get install -y xmlstarlet jq
           npm i -g @redocly/cli
 
+
       - name: Generate OpenAPI from code
         continue-on-error: true
         run: mvn -q -DskipTests -f backend/pom.xml org.springdoc:springdoc-openapi-maven-plugin:generate
+
 
       - name: Lint OpenAPI
         run: |
@@ -47,6 +49,7 @@ jobs:
           else
             echo "::warning::backend/target/openapi.json não foi gerado"
           fi
+
 
       - name: Verify docs (no-fix)
         if: ${{ github.event_name != 'pull_request' }}
@@ -63,6 +66,7 @@ jobs:
             git commit -m "docs: sync openapireadmeerd via bot"
             git push
           fi
+
 
   danger:
     if: ${{ github.event_name == 'pull_request' }}

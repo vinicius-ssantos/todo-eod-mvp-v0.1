@@ -9,6 +9,11 @@ The format is based on Keep a Changelog and this project adheres to SemVer.
 - Prepare development for v0.2.0-SNAPSHOT (version bump in backend).
 ### Planned
 - Roadmap items for v0.2.0 and v0.3.0.
+### Docs
+- Added `docs/ROADMAP.md` com checklist do roadmap; regra de marcação com [x] + data (AAAA-MM-DD) e anotação opcional.
+- README com link para o roadmap (seção Roadmap).
+- Workflow `roadmap-issues.yml` para criar issues a partir do checklist (workflow_dispatch).
+- Atualizado `docs/schema.sql` (placeholder) após nova migration base (V1__base_schema.sql).
 
 ## [0.1.0] - 2025-09-28
 ### Added
