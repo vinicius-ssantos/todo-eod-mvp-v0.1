@@ -45,7 +45,7 @@ jobs:
               if(!done){
                 if($0 ~ /<artifactId>eod-backend<\/artifactId>/){ seen=1 }
                 else if(seen && $0 ~ /<version>[^<]+<\/version>/){
-                  gsub(/<version>[^<]+<\/version>/,"<version="">" next "</version>")
+                  sub(/<version>[^<]+<\/version>/, "<version>" next "</version>")
                   done=1; seen=0
                 }
               }
