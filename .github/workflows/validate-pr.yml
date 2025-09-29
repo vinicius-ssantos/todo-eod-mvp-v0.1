@@ -1,0 +1,34 @@
+name: Validate PR title and branch
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  pr-lint:
+    name: PR Lint
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
+    steps:
+      - name: Validate PR title
+        shell: bash
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          echo "PR title: $TITLE"
+          re='^(feat|fix|docs|test|refactor|chore|ci|build|perf|style)(\([a-z0-9\-]+\))?: .{6,}$'
+          if [[ ! $TITLE =~ $re ]]; then
+            echo "::error title=Invalid PR title::Title must match 'type(scope): short summary' and be descriptive (>= 6 chars)."
+            echo "Allowed types: feat, fix, docs, test, refactor, chore, ci, build, perf, style. Scope is optional."
+            exit 1
+          fi
+      - name: Validate branch name
+        shell: bash
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          echo "Head branch: $BRANCH"
+          re='^(feat|fix|docs|test|refactor|chore|ci|build|perf|style)\/[a-z0-9]+(-[a-z0-9]+)*$'
+          if [[ ! $BRANCH =~ $re ]]; then
+            echo "::error title=Invalid branch name::Branch must match 'type/short-kebab-summary' (e.g., feat/add-agents-md)."
+            echo "Allowed types: feat, fix, docs, test, refactor, chore, ci, build, perf, style."
+            exit 1
+          fi
