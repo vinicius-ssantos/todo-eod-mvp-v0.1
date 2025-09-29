@@ -1,0 +1,105 @@
+name: Roadmap Issues
+
+on:
+  workflow_dispatch:
+    inputs:
+      section:
+        description: "Roadmap section (ex.: v0.1)"
+        required: true
+        default: "v0.1"
+      dry_run:
+        description: "Dry run (não cria issues)"
+        required: false
+        default: "false"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create issues from docs/ROADMAP.md
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const sectionInput = core.getInput('section') || 'v0.1';
+            const dry = (core.getInput('dry_run') || 'false').toLowerCase() === 'true';
+            const path = 'docs/ROADMAP.md';
+            if (!fs.existsSync(path)) {
+              core.setFailed(`File not found: ${path}`);
+              return;
+            }
+            const md = fs.readFileSync(path, 'utf8');
+            function sliceSection(md, sectionTitle) {
+              const h = `## ${sectionTitle}`;
+              const start = md.indexOf(h);
+              if (start < 0) return '';
+              const after = md.indexOf('\n## ', start + h.length);
+              return after > 0 ? md.substring(start, after) : md.substring(start);
+            }
+            const section = sliceSection(md, `${sectionInput} —`) || sliceSection(md, sectionInput);
+            if (!section) {
+              core.setFailed(`Section not found: ${sectionInput}`);
+              return;
+            }
+            const lines = section.split('\n');
+            const items = lines.filter(l => l.trim().startsWith('- [ ] ')).map(l => l.trim().substring(6));
+            if (items.length === 0) {
+              core.warning('No unchecked items found in section');
+            }
+            const stripMd = s => s.replace(/`/g, '').replace(/\s+/g, ' ').trim();
+            const truncate = (s, n = 72) => s.length > n ? s.substring(0, n - 1) + '…' : s;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const created = [];
+            for (const raw of items) {
+              const titleCore = truncate(stripMd(raw));
+              const title = `${sectionInput}: ${titleCore}`;
+              // check if issue already exists with exact title
+              // Escape/strip quotes in search query term, then verify exact match in results
+              const queryTitle = title.replace(/"/g, '');
+              const q = `repo:${owner}/${repo} is:issue in:title ${queryTitle}`;
+              const found = await github.rest.search.issuesAndPullRequests({ q });
+              if (found.data.total_count > 0) {
+                const exact = (found.data.items || []).find(it => it.title === title);
+                if (exact) {
+                  core.info(`Skip (exists): ${title}`);
+                  continue;
+                }
+              }
+              // Extra dedup by exact title (handles quotes in titles)
+              try {
+                const list = await github.rest.issues.listForRepo({ owner, repo, state: 'all', per_page: 100 });
+                const dup = (list.data || []).find(it => it.title === title);
+                if (dup) {
+                  core.info(`Skip (exists exact): ${title}`);
+                  continue;
+                }
+              } catch (e) {
+                core.warning(`Dedup listForRepo failed: ${e?.message || e}`);
+              }
+
+              const body = [
+                `Fonte: docs/ROADMAP.md (${sectionInput})`,
+                '',
+                `Item: - [ ] ${raw}`,
+                '',
+                'Regra de marcação: ao concluir, troque [ ] por [x], acrescente a data (AAAA-MM-DD) e, se necessário, uma anotação breve.'
+              ].join('\n');
+              const labels = ['roadmap', sectionInput];
+              if (dry) {
+                core.info(`[dry-run] Would create: ${title}`);
+                continue;
+              }
+              const res = await github.rest.issues.create({ owner, repo, title, body, labels });
+              core.info(`Created #${res.data.number}: ${title}`);
+              created.push(res.data.number);
+            }
+            core.setOutput('created', created.join(','));
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
