@@ -50,8 +50,8 @@ jobs:
       - name: Verify docs (no-fix)
         run: bash scripts/verify_docs.sh
 
-      - name: Auto-fix docs on PR
-        if: ${{ github.event_name == 'pull_request' }}
+      - name: Auto-fix docs (PR or main)
+        if: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
         run: |
           bash scripts/verify_docs.sh --fix
           if ! git diff --quiet; then
