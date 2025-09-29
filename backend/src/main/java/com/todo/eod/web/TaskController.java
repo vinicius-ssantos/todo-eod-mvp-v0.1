@@ -83,8 +83,7 @@ public class TaskController {
     public List<TaskResponse> list(@RequestParam(required = false) TaskState state,
                                    @RequestParam(required = false) String assignee,
                                    @RequestParam(required = false) String label) {
-        // MVP: return all; filtering could be added with Specifications
-        return taskRepository.findAll().stream()
+        return taskRepository.search(state, assignee, label).stream()
                 .map(mapper::toResponse)
                 .toList();
     }

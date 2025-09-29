@@ -1,5 +1,5 @@
 ### Criar task (use o UUID da policy seed abaixo)
-# Policy seed: 11111111-1111-1111-1111-111111111111 (Default DoD for Java Service)
+# Policy seed: 00000000-0000-0000-0000-000000000001 (Default DoD for Java Service)
 POST http://localhost:8080/tasks
 Content-Type: application/json
 Correlation-Id: 3f5d5a34-7d74-4f6c-b91d-9a1dbb2c7d3f
@@ -7,7 +7,7 @@ Correlation-Id: 3f5d5a34-7d74-4f6c-b91d-9a1dbb2c7d3f
 {
   "key": "TSK-123",
   "title": "Implementar /login com Correlation-Id",
-  "dodPolicyId": "11111111-1111-1111-1111-111111111111",
+  "dodPolicyId": "00000000-0000-0000-0000-000000000001",
   "assignee": "vinicius",
   "labels": ["security","observability"],
   "correlationId": "3f5d5a34-7d74-4f6c-b91d-9a1dbb2c7d3f"
