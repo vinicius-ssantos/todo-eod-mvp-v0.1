@@ -66,6 +66,7 @@ public class WebhookIngestService {
             task.setState(TaskState.DONE);
         }
         task.setUpdatedAt(OffsetDateTime.now());
+        taskRepository.save(task);
 
         return IngestResult.ok();
     }
