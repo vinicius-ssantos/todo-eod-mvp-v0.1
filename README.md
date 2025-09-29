@@ -150,6 +150,7 @@ README.md
 - **UUID inválido no correlationId** → gere outro na criação da task
 
 ## Roadmap
+- Checklist completo: veja `docs/ROADMAP.md`. Regra: ao concluir, marque [x], adicione a data (AAAA-MM-DD) e, se necessário, uma anotação breve.
 - [ ] Salvar/editar políticas DoD via API
 - [ ] Normalizar modelo “Evidence” e histórico por task
 - [ ] Autenticação JWT end-to-end
