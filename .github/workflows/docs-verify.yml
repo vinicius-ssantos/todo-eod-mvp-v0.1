@@ -1,0 +1,80 @@
+name: Docs Verify
+
+on:
+  pull_request:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  docs-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java 21 + Maven cache
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Setup Node (lts)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      - name: Install tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xmlstarlet jq
+          npm i -g @redocly/cli
+
+      - name: Generate OpenAPI from code
+        run: mvn -q -DskipTests -f backend/pom.xml org.springdoc:springdoc-openapi-maven-plugin:generate
+
+      - name: Lint OpenAPI
+        run: |
+          if [ -f backend/target/openapi.json ]; then
+            redocly lint backend/target/openapi.json
+          elif [ -f target/openapi.json ]; then
+            redocly lint target/openapi.json
+          else
+            echo "::warning::backend/target/openapi.json não foi gerado"
+          fi
+
+      - name: Verify docs (no-fix)
+        run: bash scripts/verify_docs.sh
+
+      - name: Auto-fix docs on PR
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          bash scripts/verify_docs.sh --fix
+          if ! git diff --quiet; then
+            git config user.name "codex-bot"
+            git config user.email "codex-bot@users.noreply.github.com"
+            git add -A
+            git commit -m "docs: sync openapireadmeerd via bot"
+            git push
+          fi
+
+  danger:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+      - run: npm i danger --no-save
+      - run: npx danger ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

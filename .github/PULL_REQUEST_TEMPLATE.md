@@ -39,6 +39,16 @@ Optional quick checks:
 
 ---
 
+## Objetivo
+Sincronizar documentação e contratos.
+
+## Checklist (Docs)
+- [ ] OpenAPI regenerado (`mvn ... springdoc ... generate`)
+- [ ] Lint OK (`redocly lint`)
+- [ ] README com versões atualizadas
+- [ ] ERD/schema atualizado (placeholder)
+- [ ] Exemplos HTTP verificados (se aplicável)
+
 ## Checklist
 - [ ] Commit messages follow Conventional Commits
 - [ ] PR title follows `type(scope): summary`
