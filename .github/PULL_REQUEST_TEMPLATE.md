@@ -43,10 +43,12 @@ Optional quick checks:
 - [ ] Commit messages follow Conventional Commits
 - [ ] PR title follows `type(scope): summary`
 - [ ] Branch name follows `type/short-kebab-summary`
+- [ ] CHANGELOG updated (Unreleased) with user-facing changes
 - [ ] Clear summary and context provided
 - [ ] Linked issues (e.g., Closes #123)
 - [ ] Tests added/updated and pass `./mvnw verify`
-- [ ] Docs updated (README/AGENTS.md/OpenAPI if API changed)
+- [ ] Docs updated (README/AGENTS.md)
+- [ ] OpenAPI updated and versioned (docs/openapi/openapi-${project.version}.json)
 - [ ] DB migrations added if needed (Flyway `db/migration`)
 - [ ] No secrets committed; logs avoid sensitive data
 - [ ] Backward compatibility considered (breaking changes documented)

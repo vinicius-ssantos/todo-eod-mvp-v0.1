@@ -30,3 +30,26 @@ jobs:
 
       - name: Build & test (backend)
         run: mvn -B -ntp -DskipTests=false -f backend/pom.xml verify
+
+      - name: Ensure jq is available
+        if: always()
+        run: |
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y jq
+          fi
+
+      - name: Check versioned OpenAPI JSON exists
+        run: |
+          VER=$(mvn -q -f backend/pom.xml help:evaluate -Dexpression=project.version -DforceStdout)
+          FILE="docs/openapi/openapi-${VER}.json"
+          echo "Project version: $VER"
+          if [ ! -f "$FILE" ]; then
+            echo "::error title=Missing OpenAPI file::Expected versioned file $FILE. Generate from /v3/api-docs and commit."
+            echo "Hint: run the app locally (with Postgres up) and: curl -sS http://localhost:8080/v3/api-docs > $FILE"
+            exit 1
+          fi
+          if ! jq -e . "$FILE" >/dev/null 2>&1; then
+            echo "::error title=Invalid JSON::$FILE is not valid JSON."
+            exit 1
+          fi
