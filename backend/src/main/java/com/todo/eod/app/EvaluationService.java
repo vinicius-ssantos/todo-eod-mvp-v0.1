@@ -42,6 +42,9 @@ public class EvaluationService {
                 if (et == EvidenceType.FLAG_ENABLED && r.has("minPercentage")) {
                     int min = r.get("minPercentage").asInt();
                     String flagKey = r.has("flagKey") ? r.get("flagKey").asText() : null;
+                    if (flagKey != null && task.getKey() != null) {
+                        flagKey = flagKey.replace("{task.key}", task.getKey());
+                    }
 
                     // Prefer provider, fallback to latest evidence percentage
                     int providerPercent = flagProvider != null && flagKey != null
