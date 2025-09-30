@@ -9,6 +9,7 @@ The format is based on Keep a Changelog and this project adheres to SemVer.
 - Prepare development for v0.2.0-SNAPSHOT (version bump in backend).
 - GitHub/GitLab webhooks: HMAC signature verification and payload normalization to internal contract.
 - Idempotency via Redis (with in-memory fallback) and basic per-origin rate-limit.
+- JWT authentication (HS256) with scopes and initial authorization (tasks:*, webhooks:ingest).
 ### Planned
 - Roadmap items for v0.2.0 and v0.3.0.
 ### Docs
@@ -19,8 +20,9 @@ The format is based on Keep a Changelog and this project adheres to SemVer.
 - OpenAPI sincronizado para `openapi/openapi.json` (usando spec da última release enquanto backend está em SNAPSHOT).
 - README: versões sincronizadas (Java, Spring Boot).
 - Adicionados exemplos HTTP para webhooks assinados (GitHub/GitLab) em `docs/examples/`.
-- README: adição de snippets curl para webhooks assinados (GitHub/GitLab).
+ - README: adição de snippets curl para webhooks assinados (GitHub/GitLab).
  - Documentação de Redis + propriedades (`eod.rateLimit.perOriginPerMinute`, `eod.idempotency.ttlSeconds`).
+ - Exemplos JWT: geradores em `scripts/jwt/` (Node e Java) e `.http` com Bearer em `docs/examples/tasks-secured.http`.
 
 ## [0.1.0] - 2025-09-28
 ### Added

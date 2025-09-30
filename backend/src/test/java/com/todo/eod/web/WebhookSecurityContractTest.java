@@ -65,6 +65,39 @@ class WebhookSecurityContractTest {
     }
 
     @Test
+    void github_rate_limited_returns429() throws Exception {
+        when(rateLimiter.allow(anyString())).thenReturn(false);
+        mvc.perform(post("/webhooks/github")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-GitHub-Event", "pull_request")
+                        .header("X-GitHub-Delivery", "gh-delivery-rl")
+                        .header("X-Hub-Signature-256", "sha256=any")
+                        .content("{}"))
+                .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    void github_duplicate_returns202() throws Exception {
+        when(webhookSecurity.verifyGitHub(anyMap(), anyString())).thenReturn(true);
+        when(rateLimiter.allow(anyString())).thenReturn(true);
+
+        WebhookPayload p = new WebhookPayload();
+        p.setEventId("gh-dup-1");
+        p.setType("PR_MERGED");
+        p.setTaskKey("TSK-1");
+        when(webhookNormalizer.normalizeGitHub(anyString(), anyString(), any(), any(), any())).thenReturn(p);
+        when(idempotencyService.isFirstProcessing("gh-dup-1")).thenReturn(false);
+
+        mvc.perform(post("/webhooks/github")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-GitHub-Event", "pull_request")
+                        .header("X-GitHub-Delivery", "gh-dup-1")
+                        .header("X-Hub-Signature-256", "sha256=deadbeef")
+                        .content("{}"))
+                .andExpect(status().isAccepted());
+    }
+
+    @Test
     void github_invalid_signature_returns401() throws Exception {
         when(webhookSecurity.verifyGitHub(anyMap(), anyString())).thenReturn(false);
 

@@ -106,6 +106,19 @@ Rate-limit e idempotência:
 - TTL de idempotência em segundos (default 86400): `eod.idempotency.ttlSeconds`
 - Ambos usam Redis se disponível; fallback in-memory por instância
 
+Segurança (JWT HS256):
+- Secret: `eod.security.jwt.secret` (ou env `APP_JWT_SECRET`)
+- Escopos:
+  - `tasks:*` para `/tasks/**` e `/flags/**`
+  - `webhooks:ingest` para `/webhooks/observability` e `/webhooks/flags`
+  - `/webhooks/github` e `/webhooks/gitlab` usam assinatura HMAC do provider (sem JWT)
+- Token de exemplo (payload): `{ "sub":"dev", "scope":"tasks:* webhooks:ingest", "exp": <epoch> }`
+
+Geração rápida de JWT:
+- Node: `node scripts/jwt/gen-jwt.js --secret change-me --sub dev --scope "tasks:* webhooks:ingest" --exp 3600`
+- Java: `javac scripts/jwt/GenJwt.java && java -cp scripts/jwt GenJwt --secret change-me --sub dev --scope "tasks:* webhooks:ingest" --exp 3600`
+- Exemplo HTTP com Bearer: `docs/examples/tasks-secured.http:1`
+
 ## Webhooks suportados
 | Tipo | Payload mínimo | Uso |
 |---|---|---|

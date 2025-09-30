@@ -1,0 +1,28 @@
+# Tasks API secured with JWT (Bearer)
+
+@baseUrl = http://localhost:8080
+@jwt = REPLACE_WITH_JWT
+
+###
+# Create a task (requires scope: tasks:*)
+
+POST {{baseUrl}}/tasks
+Authorization: Bearer {{jwt}}
+Content-Type: application/json
+
+{
+  "key": "TSK-SEC-1",
+  "title": "Criar endpoint seguro",
+  "dodPolicyId": "00000000-0000-0000-0000-000000000001",
+  "assignee": "dev",
+  "labels": ["security"],
+  "correlationId": "00000000-0000-0000-0000-000000000000"
+}
+
+###
+# Get by ID (requires scope: tasks:*)
+
+GET {{baseUrl}}/tasks/{{taskId}}
+Authorization: Bearer {{jwt}}
+Accept: application/json
+
