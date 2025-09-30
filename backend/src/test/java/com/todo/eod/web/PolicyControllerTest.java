@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(PolicyController.class)
+@org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc(addFilters = false)
 class PolicyControllerTest {
 
     @Autowired
@@ -39,4 +40,3 @@ class PolicyControllerTest {
                 .andExpect(jsonPath("$[0].name").value("Default"));
     }
 }
-

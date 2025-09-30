@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 public class EvaluationService {
 
     private final EvidenceRepository evidenceRepository;
+    private final FeatureFlagProvider flagProvider;
     private final ObjectMapper om = new ObjectMapper();
 
     public EvalResult evaluate(Task task) {
@@ -40,18 +41,30 @@ public class EvaluationService {
                 String details = null;
                 if (et == EvidenceType.FLAG_ENABLED && r.has("minPercentage")) {
                     int min = r.get("minPercentage").asInt();
-                    // best effort: peek last evidence of that type for %
-                    Optional<Evidence> last = evidences.stream()
-                        .filter(ev -> ev.getType() == EvidenceType.FLAG_ENABLED)
-                        .reduce((a,b)->b);
-                    int percent = last.map(ev -> {
-                        try {
-                            JsonNode p = om.readTree(ev.getPayload());
-                            return p.has("percentage") ? p.get("percentage").asInt() : -1;
-                        } catch (Exception e) { return -1; }
-                    }).orElse(-1);
-                    ok = percent >= min && present.contains(EvidenceType.FLAG_ENABLED);
-                    details = "percentage=" + percent + ", min=" + min;
+                    String flagKey = r.has("flagKey") ? r.get("flagKey").asText() : null;
+                    if (flagKey != null && task.getKey() != null) {
+                        flagKey = flagKey.replace("{task.key}", task.getKey());
+                    }
+
+                    // Prefer provider, fallback to latest evidence percentage
+                    int providerPercent = flagProvider != null && flagKey != null
+                            ? flagProvider.getPercentage(flagKey).orElse(-1)
+                            : -1;
+
+                    int evidencePercent = evidences.stream()
+                            .filter(ev -> ev.getType() == EvidenceType.FLAG_ENABLED)
+                            .reduce((a, b) -> b)
+                            .map(ev -> {
+                                try {
+                                    JsonNode p = om.readTree(ev.getPayload());
+                                    return p.has("percentage") ? p.get("percentage").asInt() : -1;
+                                } catch (Exception e) { return -1; }
+                            })
+                            .orElse(-1);
+
+                    int percent = providerPercent >= 0 ? providerPercent : evidencePercent;
+                    ok = percent >= min && (providerPercent >= 0 || present.contains(EvidenceType.FLAG_ENABLED));
+                    details = "percentage=" + percent + ", min=" + min + (flagKey != null ? ", key=" + flagKey : "");
                 }
                 progress.add(new EvalProgress(t, ok, details));
             }

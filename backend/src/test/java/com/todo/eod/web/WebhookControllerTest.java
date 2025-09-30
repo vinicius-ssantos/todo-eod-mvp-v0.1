@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(WebhookController.class)
+@org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc(addFilters = false)
 class WebhookControllerTest {
 
     @Autowired
@@ -22,8 +23,22 @@ class WebhookControllerTest {
     @MockBean
     WebhookIngestService ingest;
 
+    @MockBean
+    WebhookSecurity webhookSecurity;
+
+    @MockBean
+    WebhookNormalizer webhookNormalizer;
+
+    @MockBean
+    com.todo.eod.infra.ratelimit.RateLimiterService rateLimiter;
+
+    @MockBean
+    com.todo.eod.infra.idem.IdempotencyService idempotencyService;
+
     @Test
     void postGithubWebhook_returns200_whenAccepted() throws Exception {
+        org.mockito.Mockito.when(rateLimiter.allow(org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
+        org.mockito.Mockito.when(idempotencyService.isFirstProcessing(org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
         when(ingest.ingest(anyString(), anyString(), anyString(), any())).thenReturn(WebhookIngestService.IngestResult.ok());
 
         String body = "{" +
@@ -41,4 +56,3 @@ class WebhookControllerTest {
                 .andExpect(status().isOk());
     }
 }
-

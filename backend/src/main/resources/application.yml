@@ -23,3 +23,17 @@ logging:
     org.hibernate.SQL: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%X{correlationId}] %logger{36} - %msg%n"
+
+eod:
+  webhooks:
+    github:
+      secret: ""
+    gitlab:
+      secret: ""
+  rateLimit:
+    perOriginPerMinute: 600
+  idempotency:
+    ttlSeconds: 86400
+  security:
+    jwt:
+      secret: ${APP_JWT_SECRET:change-me}

@@ -12,6 +12,7 @@
 - [Variáveis de Ambiente](#variáveis-de-ambiente)
 - [APIs & Docs](#apis--docs)
 - [Webhooks suportados](#webhooks-suportados)
+- [Webhooks assinados](#webhooks-assinados)
 - [Definition of Done (DoD)](#definition-of-done-dod)
 - [Observabilidade](#observabilidade)
 - [Testes & CI](#testes--ci)
@@ -83,7 +84,7 @@ curl -sS -X POST http://localhost:8080/webhooks/github -H "Content-Type: applica
 | `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:5432/todo_eod` | Postgres |
 | `SPRING_DATASOURCE_USERNAME` | `postgres` |  |
 | `SPRING_DATASOURCE_PASSWORD` | `postgres` |  |
-| `SPRING_REDIS_HOST` | `localhost` | Cache para idempotência |
+| `SPRING_REDIS_HOST` | `localhost` | Redis (idempotência/rate-limit) |
 | `SPRING_REDIS_PORT` | `6379` |  |
 | `APP_JWT_SECRET` | `change-me` | Assinatura JWT (dev) |
 | `APP_ALLOWED_ORIGINS` | `http://localhost:4200` | CORS (se front) |
@@ -96,7 +97,27 @@ Endpoints principais:
 - `POST /tasks` cria uma task com `dodPolicyId` e (opcional) `correlationId`
 - `GET /tasks/{id}`/`GET /tasks?key=...`
 - `POST /webhooks/github` recebe eventos como `PR_MERGED`
+- `PUT /flags/{key}` define percentual da feature (0-100)
+- `GET /flags/{key}` consulta percentual atual
 - `GET /evaluations/{taskId}` histórico de avaliação de evidências (quando aplicável)
+
+Rate-limit e idempotência:
+- Limite por origem/minuto (default 600): `eod.rateLimit.perOriginPerMinute`
+- TTL de idempotência em segundos (default 86400): `eod.idempotency.ttlSeconds`
+- Ambos usam Redis se disponível; fallback in-memory por instância
+
+Segurança (JWT HS256):
+- Secret: `eod.security.jwt.secret` (ou env `APP_JWT_SECRET`)
+- Escopos:
+  - `tasks:*` para `/tasks/**` e `/flags/**`
+  - `webhooks:ingest` para `/webhooks/observability` e `/webhooks/flags`
+  - `/webhooks/github` e `/webhooks/gitlab` usam assinatura HMAC do provider (sem JWT)
+- Token de exemplo (payload): `{ "sub":"dev", "scope":"tasks:* webhooks:ingest", "exp": <epoch> }`
+
+Geração rápida de JWT:
+- Node: `node scripts/jwt/gen-jwt.js --secret change-me --sub dev --scope "tasks:* webhooks:ingest" --exp 3600`
+- Java: `javac scripts/jwt/GenJwt.java && java -cp scripts/jwt GenJwt --secret change-me --sub dev --scope "tasks:* webhooks:ingest" --exp 3600`
+- Exemplo HTTP com Bearer: `docs/examples/tasks-secured.http:1`
 
 ## Webhooks suportados
 | Tipo | Payload mínimo | Uso |
@@ -108,6 +129,45 @@ Endpoints principais:
 | `FF_PERCENT` | `eventId`, `featureKey`, `percent`, `taskKey` | Marca “Feature flag ≥ X%” |
 
 > **Idempotência:** usamos `eventId` + Redis/DB para deduplicar eventos.
+
+## Webhooks assinados
+- Exemplos prontos (HTTP):
+  - GitHub: `docs/examples/webhooks-github.http:1`
+  - GitLab: `docs/examples/webhooks-gitlab.http:1`
+- Configure os segredos em `backend/src/main/resources/application.yml:27`:
+  - `eod.webhooks.github.secret`, `eod.webhooks.gitlab.secret`
+- Envie os cabeçalhos de assinatura:
+  - GitHub: `X-GitHub-Event`, `X-GitHub-Delivery`, `X-Hub-Signature-256`
+  - GitLab: `X-Gitlab-Event`, `X-Gitlab-Event-UUID`, `X-Gitlab-Signature` (ou `X-Gitlab-Token`)
+- Opcional: informe a task via `X-EOD-Task-Key: <taskKey>` ou `?taskKey=...`
+
+Exemplos rápidos (curl, bash):
+
+```bash
+# GitHub: pull_request merged → PR_MERGED
+SECRET="change-me"
+BODY='{"action":"closed","number":42,"pull_request":{"merged":true,"base":{"ref":"main"},"merge_commit_sha":"abc123def4567890","html_url":"https://github.com/org/app/pull/42"},"repository":{"full_name":"org/app"}}'
+SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$SECRET" | sed 's/^.* /sha256=/')
+curl -sS -X POST http://localhost:8080/webhooks/github \
+  -H "Content-Type: application/json" \
+  -H "X-GitHub-Event: pull_request" \
+  -H "X-GitHub-Delivery: gh-delivery-001" \
+  -H "X-Hub-Signature-256: $SIG" \
+  -H "X-EOD-Task-Key: TSK-123" \
+  -d "$BODY"
+
+# GitLab: pipeline success → CI_GREEN
+SECRET="change-me"
+BODY='{"object_kind":"pipeline","project":{"path_with_namespace":"org/app","web_url":"https://gitlab.com/org/app"},"object_attributes":{"status":"success","name":"build-and-test","sha":"cafebabedeadbeef00112233445566778899aabb","ref":"main"}}'
+SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$SECRET" -binary | base64)
+curl -sS -X POST http://localhost:8080/webhooks/gitlab \
+  -H "Content-Type: application/json" \
+  -H "X-Gitlab-Event: Pipeline Hook" \
+  -H "X-Gitlab-Event-UUID: gl-evt-002" \
+  -H "X-Gitlab-Signature: $SIG" \
+  -H "X-EOD-Task-Key: TSK-123" \
+  -d "$BODY"
+```
 
 ## Definition of Done (DoD)
 A **política** é declarativa (ex.: armazenada em JSON/YAML no DB).  

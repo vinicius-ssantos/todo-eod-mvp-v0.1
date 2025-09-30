@@ -1,60 +1,52 @@
 package com.todo.eod.app;
 
 import com.todo.eod.domain.DodPolicy;
-import com.todo.eod.domain.Evidence;
-import com.todo.eod.domain.EvidenceType;
 import com.todo.eod.domain.Task;
 import com.todo.eod.infra.repo.EvidenceRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
-class EvaluationServiceFlagTest {
-
+class EvaluationServiceFlagProviderTest {
     @Test
-    void complete_is_false_when_flag_percentage_below_min() {
+    void provider_percentage_satisfies_requirement() {
         var repo = Mockito.mock(EvidenceRepository.class);
-        var flags = Mockito.mock(com.todo.eod.app.FeatureFlagProvider.class);
+        var flags = Mockito.mock(FeatureFlagProvider.class);
         var svc = new EvaluationService(repo, flags);
         var policy = DodPolicy.builder()
                 .name("policy")
                 .spec("""
-                        {"requirements":[{"type":"FLAG_ENABLED","minPercentage":10}]}
+                        {"requirements":[{"type":"FLAG_ENABLED","flagKey":"FF_A","minPercentage":25}]}
                         """)
                 .build();
         var task = Task.builder().dodPolicy(policy).build();
 
-        when(repo.findByTask(task)).thenReturn(List.of(
-                Evidence.builder().type(EvidenceType.FLAG_ENABLED).payload("{\"percentage\":5}").build()
-        ));
-
-        var res = svc.evaluate(task);
-        assertFalse(res.complete());
-    }
-
-    @Test
-    void complete_is_true_when_flag_percentage_meets_min() {
-        var repo = Mockito.mock(EvidenceRepository.class);
-        var flags = Mockito.mock(com.todo.eod.app.FeatureFlagProvider.class);
-        var svc = new EvaluationService(repo, flags);
-        var policy = DodPolicy.builder()
-                .name("policy")
-                .spec("""
-                        {"requirements":[{"type":"FLAG_ENABLED","minPercentage":10}]}
-                        """)
-                .build();
-        var task = Task.builder().dodPolicy(policy).build();
-
-        when(repo.findByTask(task)).thenReturn(List.of(
-                Evidence.builder().type(EvidenceType.FLAG_ENABLED).payload("{\"percentage\":10}").build()
-        ));
+        when(flags.getPercentage("FF_A")).thenReturn(java.util.Optional.of(30));
 
         var res = svc.evaluate(task);
         assertTrue(res.complete());
     }
+
+    @Test
+    void provider_percentage_below_min_fails() {
+        var repo = Mockito.mock(EvidenceRepository.class);
+        var flags = Mockito.mock(FeatureFlagProvider.class);
+        var svc = new EvaluationService(repo, flags);
+        var policy = DodPolicy.builder()
+                .name("policy")
+                .spec("""
+                        {"requirements":[{"type":"FLAG_ENABLED","flagKey":"FF_A","minPercentage":50}]}
+                        """)
+                .build();
+        var task = Task.builder().dodPolicy(policy).build();
+
+        when(flags.getPercentage("FF_A")).thenReturn(java.util.Optional.of(25));
+
+        var res = svc.evaluate(task);
+        assertFalse(res.complete());
+    }
 }
+
