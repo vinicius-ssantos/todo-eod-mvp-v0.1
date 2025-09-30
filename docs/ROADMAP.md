@@ -11,13 +11,13 @@
 - [x] Logs estruturados com `correlationId`; Actuator/health básico (2025-09-29) Filtro de Correlation-Id e Actuator
 - [x] Testes: unit de `evaluate()`, E2E feliz, idempotência (reenvio de `eventId` não duplica) (2025-09-29) Cobertura mínima (unit + idempotência)
 
-## v0.2 — Integrações Reais + Segurança
-- [ ] Webhooks GitHub/GitLab com verificação de assinatura (HMAC) e normalização de payload
-- [ ] Mapeamento de CI green (ex.: GitHub Actions) em `Evidence`
-- [ ] Provider simples de feature-flags (percentual) conectado a `FLAG_ENABLED`
-- [ ] Idempotência com Redis + rate-limit básico por origem
-- [ ] Autenticação JWT com escopos (`tasks:*`, `webhooks:ingest`) e autorização inicial
-- [ ] Testes de contrato dos webhooks e cenários de erro (assinatura inválida, repetidos, parciais)
+## v0.2 - Integrações Reais + Segurança
+- [x] Webhooks GitHub/GitLab com verificação de assinatura (HMAC) e normalização de payload (2025-09-30) Assinatura HMAC validada e normalização para PR_MERGED/CI_GREEN; exemplos .http
+- [x] Mapeamento de CI green (ex.: GitHub Actions) em `Evidence` (2025-09-30) `workflow_run/pipeline` → `CI_GREEN` persistido
+- [x] Provider simples de feature-flags (percentual) conectado a `FLAG_ENABLED` (2025-09-30) Provider in-memory + `/flags` GET/PUT; avaliação usa `flagKey`+`minPercentage`
+- [x] Idempotência com Redis + rate-limit básico por origem (2025-09-30) Redis com fallback local; 202 para duplicados; 429 para excesso
+- [x] Autenticação JWT com escopos (`tasks:*`, `webhooks:ingest`) e autorização inicial (2025-09-30) Resource Server HS256; escopos aplicados em rotas
+- [x] Testes de contrato dos webhooks e cenários de erro (assinatura inválida, repetidos, parciais) (2025-09-30) 401/403/429/202 cobertos; JSON inválido também
 
 ## v0.3 — Observabilidade + UI
 - [ ] Métricas Micrometer: lead/cycle time, aging, % em VERIFICATION, PR_MERGED→DONE
@@ -44,7 +44,7 @@
 
 ## Critérios de Aceite (Checklist por versão)
 - [ ] v0.1: cenários 1–5 de aceitação executam; OpenAPI gerada e lintada; idempotência por `eventId`
-- [ ] v0.2: webhooks assinados validados; Redis ativo; JWT protege endpoints sensíveis
+- [x] v0.2: webhooks assinados validados; Redis ativo; JWT protege endpoints sensíveis (2025-09-30)
 - [ ] v0.3: métricas visíveis; UI mostra progresso e atualiza sem refresh manual
 - [ ] v0.4: Outbox garante entrega; notificações operacionais; auditoria consultável
 - [ ] v0.5: políticas por projeto; RBAC fino; alertas e relatórios prontos
