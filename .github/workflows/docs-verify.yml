@@ -14,6 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
 
       - name: Setup Java 21 + Maven cache
         uses: actions/setup-java@v4
@@ -64,8 +67,9 @@ jobs:
             git config user.email "codex-bot@users.noreply.github.com"
             git add -A
             git commit -m "docs: sync openapireadmeerd via bot"
-            BRANCH="${{ github.head_ref }}"
+            BRANCH="${{ github.event.pull_request.head.ref }}"
             echo "Pushing changes to PR branch: $BRANCH"
+            git pull --rebase origin "$BRANCH" || true
             git push origin HEAD:"$BRANCH"
           fi
 
