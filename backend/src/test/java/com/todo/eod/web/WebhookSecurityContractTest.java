@@ -3,6 +3,7 @@ package com.todo.eod.web;
 import com.todo.eod.app.WebhookIngestService;
 import com.todo.eod.web.dto.WebhookPayload;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -29,9 +30,23 @@ class WebhookSecurityContractTest {
     @MockBean
     WebhookNormalizer webhookNormalizer;
 
+    @MockBean
+    com.todo.eod.infra.ratelimit.RateLimiterService rateLimiter;
+
+    @MockBean
+    com.todo.eod.infra.idem.IdempotencyService idempotencyService;
+
+    @BeforeEach
+    void setupRateAndIdem() {
+        org.mockito.Mockito.when(rateLimiter.allow(org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
+        org.mockito.Mockito.when(idempotencyService.isFirstProcessing(org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
+    }
+
     @Test
     void github_signed_pr_merged_returns200() throws Exception {
         when(webhookSecurity.verifyGitHub(anyMap(), anyString())).thenReturn(true);
+        when(rateLimiter.allow(anyString())).thenReturn(true);
+        when(idempotencyService.isFirstProcessing(anyString())).thenReturn(true);
         WebhookPayload p = new WebhookPayload();
         p.setEventId("gh-delivery-1");
         p.setType("PR_MERGED");
@@ -64,6 +79,8 @@ class WebhookSecurityContractTest {
     @Test
     void gitlab_signed_pipeline_success_returns200() throws Exception {
         when(webhookSecurity.verifyGitLab(anyMap(), anyString())).thenReturn(true);
+        when(rateLimiter.allow(anyString())).thenReturn(true);
+        when(idempotencyService.isFirstProcessing(anyString())).thenReturn(true);
         WebhookPayload p = new WebhookPayload();
         p.setEventId("gl-evt-1");
         p.setType("CI_GREEN");

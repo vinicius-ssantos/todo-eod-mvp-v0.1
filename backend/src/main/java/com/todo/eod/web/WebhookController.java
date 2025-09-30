@@ -21,6 +21,8 @@ public class WebhookController {
     private final WebhookIngestService ingest;
     private final WebhookSecurity webhookSecurity;
     private final WebhookNormalizer webhookNormalizer;
+    private final com.todo.eod.infra.ratelimit.RateLimiterService rateLimiter;
+    private final com.todo.eod.infra.idem.IdempotencyService idempotencyService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @PostMapping(value = "/webhooks/github", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -31,6 +33,9 @@ public class WebhookController {
         String ghEvent = header(headers, "X-GitHub-Event");
         String deliveryId = header(headers, "X-GitHub-Delivery");
 
+        // Rate limit by origin
+        if (!rateLimiter.allow("github")) return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body("rate limit");
+
         if (StringUtils.hasText(ghEvent)) {
             boolean ok = webhookSecurity.verifyGitHub(headers, body);
             if (!ok) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("invalid signature");
@@ -40,6 +45,9 @@ public class WebhookController {
                 WebhookPayload normalized = webhookNormalizer.normalizeGitHub(ghEvent, deliveryId, root, header(headers, "X-EOD-Task-Key"), taskKeyParam);
                 if (!StringUtils.hasText(normalized.getEventId())) {
                     normalized.setEventId(hexSha256(body));
+                }
+                if (!idempotencyService.isFirstProcessing(normalized.getEventId())) {
+                    return ResponseEntity.accepted().body("duplicate");
                 }
                 if (!StringUtils.hasText(normalized.getType())) {
                     return ResponseEntity.accepted().body("ignored event: " + ghEvent);
@@ -66,6 +74,9 @@ public class WebhookController {
     public ResponseEntity<?> gitlab(@RequestHeader Map<String, String> headers,
                                     @RequestBody String body,
                                     @RequestParam(value = "taskKey", required = false) String taskKeyParam) {
+        // Rate limit by origin
+        if (!rateLimiter.allow("gitlab")) return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body("rate limit");
+
         boolean ok = webhookSecurity.verifyGitLab(headers, body);
         if (!ok) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("invalid signature");
 
@@ -76,6 +87,9 @@ public class WebhookController {
             WebhookPayload normalized = webhookNormalizer.normalizeGitLab(glEvent, evtUuid, root, header(headers, "X-EOD-Task-Key"), taskKeyParam);
             if (!StringUtils.hasText(normalized.getEventId())) {
                 normalized.setEventId(hexSha256(body));
+            }
+            if (!idempotencyService.isFirstProcessing(normalized.getEventId())) {
+                return ResponseEntity.accepted().body("duplicate");
             }
             if (!StringUtils.hasText(normalized.getType())) {
                 return ResponseEntity.accepted().body("ignored event: " + glEvent);
@@ -90,6 +104,7 @@ public class WebhookController {
 
     @PostMapping("/webhooks/observability")
     public ResponseEntity<?> observability(@RequestBody WebhookPayload body) {
+        if (!rateLimiter.allow("observability")) return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body("rate limit");
         var res = ingest.ingest(body.getEventId(), body.getType(), body.getTaskKey(), body);
         if (!res.accepted()) return ResponseEntity.accepted().body(res);
         return ResponseEntity.ok(res);
@@ -97,6 +112,7 @@ public class WebhookController {
 
     @PostMapping("/webhooks/flags")
     public ResponseEntity<?> flags(@RequestBody WebhookPayload body) {
+        if (!rateLimiter.allow("flags")) return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body("rate limit");
         var res = ingest.ingest(body.getEventId(), body.getType(), body.getTaskKey(), body);
         if (!res.accepted()) return ResponseEntity.accepted().body(res);
         return ResponseEntity.ok(res);
