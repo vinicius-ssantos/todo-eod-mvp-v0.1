@@ -19,7 +19,8 @@ public class EvaluationServiceTest {
     @Test
     void evaluate_returns_complete_when_all_requirements_present() throws Exception {
         var repo = Mockito.mock(EvidenceRepository.class);
-        var svc = new EvaluationService(repo);
+        var flags = Mockito.mock(com.todo.eod.app.FeatureFlagProvider.class);
+        var svc = new EvaluationService(repo, flags);
         var policy = DodPolicy.builder()
                 .name("policy")
                 .spec("""
@@ -38,7 +39,8 @@ public class EvaluationServiceTest {
     @Test
     void evaluate_returns_incomplete_when_missing() {
         var repo = Mockito.mock(EvidenceRepository.class);
-        var svc = new EvaluationService(repo);
+        var flags = Mockito.mock(com.todo.eod.app.FeatureFlagProvider.class);
+        var svc = new EvaluationService(repo, flags);
         var policy = DodPolicy.builder()
                 .name("policy")
                 .spec("""
