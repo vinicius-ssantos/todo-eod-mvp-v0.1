@@ -1,0 +1,62 @@
+# GitHub Webhook examples (signed)
+
+@baseUrl = http://localhost:8080
+# Provide your task key or rely on fallback (repo#pr or repo@sha)
+@taskKey = TSK-123
+
+###
+# pull_request merged → PR_MERGED
+#
+# Signature (bash):
+#   export GITHUB_SECRET=change-me
+#   BODY='{"action":"closed","number":42,"pull_request":{"merged":true,"base":{"ref":"main"},"merge_commit_sha":"abc123def4567890","html_url":"https://github.com/org/app/pull/42"},"repository":{"full_name":"org/app"}}'
+#   SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$GITHUB_SECRET" | sed 's/^.* /sha256=/')
+#
+# Signature (PowerShell):
+#   $secret = "change-me"; $body = '{"action":"closed","number":42,"pull_request":{"merged":true,"base":{"ref":"main"},"merge_commit_sha":"abc123def4567890","html_url":"https://github.com/org/app/pull/42"},"repository":{"full_name":"org/app"}}'
+#   $h = New-Object System.Security.Cryptography.HMACSHA256
+#   $h.Key = [Text.Encoding]::UTF8.GetBytes($secret)
+#   $sig = ($h.ComputeHash([Text.Encoding]::UTF8.GetBytes($body)) | ForEach-Object { $_.ToString('x2') }) -join ''
+#   $SIG = "sha256=$sig"
+
+POST {{baseUrl}}/webhooks/github?taskKey={{taskKey}}
+X-GitHub-Event: pull_request
+X-GitHub-Delivery: gh-delivery-001
+X-Hub-Signature-256: sha256=REPLACE_WITH_HMAC_OF_BODY_USING_SECRET
+Content-Type: application/json
+
+{
+  "action": "closed",
+  "number": 42,
+  "pull_request": {
+    "merged": true,
+    "base": { "ref": "main" },
+    "merge_commit_sha": "abc123def4567890",
+    "html_url": "https://github.com/org/app/pull/42"
+  },
+  "repository": { "full_name": "org/app" }
+}
+
+###
+# workflow_run success → CI_GREEN
+# Compute signature like above using the exact body string
+
+POST {{baseUrl}}/webhooks/github
+X-GitHub-Event: workflow_run
+X-GitHub-Delivery: gh-delivery-002
+X-EOD-Task-Key: {{taskKey}}
+X-Hub-Signature-256: sha256=REPLACE_WITH_HMAC_OF_BODY_USING_SECRET
+Content-Type: application/json
+
+{
+  "action": "completed",
+  "workflow_run": {
+    "conclusion": "success",
+    "head_sha": "cafebabedeadbeef00112233445566778899aabb",
+    "head_branch": "main",
+    "html_url": "https://github.com/org/app/actions/runs/123456789"
+  },
+  "workflow": { "name": "build-and-test" },
+  "repository": { "full_name": "org/app" }
+}
+

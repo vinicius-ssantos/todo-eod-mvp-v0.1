@@ -22,6 +22,12 @@ class WebhookControllerTest {
     @MockBean
     WebhookIngestService ingest;
 
+    @MockBean
+    WebhookSecurity webhookSecurity;
+
+    @MockBean
+    WebhookNormalizer webhookNormalizer;
+
     @Test
     void postGithubWebhook_returns200_whenAccepted() throws Exception {
         when(ingest.ingest(anyString(), anyString(), anyString(), any())).thenReturn(WebhookIngestService.IngestResult.ok());
@@ -41,4 +47,3 @@ class WebhookControllerTest {
                 .andExpect(status().isOk());
     }
 }
-

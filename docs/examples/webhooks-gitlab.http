@@ -1,0 +1,58 @@
+# GitLab Webhook examples (signed)
+
+@baseUrl = http://localhost:8080
+@taskKey = TSK-123
+
+###
+# Merge Request merged → PR_MERGED
+#
+# Signature (bash):
+#   export GITLAB_SECRET=change-me
+#   BODY='{"object_kind":"merge_request","project":{"path_with_namespace":"org/app"},"object_attributes":{"state":"merged","iid":42,"target_branch":"main","merge_commit_sha":"abc123def4567890","url":"https://gitlab.com/org/app/merge_requests/42"}}'
+#   SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$GITLAB_SECRET" -binary | base64)
+#
+# Alternative (token): send header X-Gitlab-Token with the shared secret instead of X-Gitlab-Signature
+
+POST {{baseUrl}}/webhooks/gitlab?taskKey={{taskKey}}
+X-Gitlab-Event: Merge Request Hook
+X-Gitlab-Event-UUID: gl-evt-001
+X-Gitlab-Signature: REPLACE_WITH_BASE64_HMAC_SHA256_OF_BODY
+Content-Type: application/json
+
+{
+  "object_kind": "merge_request",
+  "project": { "path_with_namespace": "org/app" },
+  "object_attributes": {
+    "state": "merged",
+    "iid": 42,
+    "target_branch": "main",
+    "merge_commit_sha": "abc123def4567890",
+    "url": "https://gitlab.com/org/app/merge_requests/42"
+  }
+}
+
+###
+# Pipeline success → CI_GREEN
+# Compute signature like above using the exact body string
+
+POST {{baseUrl}}/webhooks/gitlab
+X-Gitlab-Event: Pipeline Hook
+X-Gitlab-Event-UUID: gl-evt-002
+X-EOD-Task-Key: {{taskKey}}
+X-Gitlab-Signature: REPLACE_WITH_BASE64_HMAC_SHA256_OF_BODY
+Content-Type: application/json
+
+{
+  "object_kind": "pipeline",
+  "project": {
+    "path_with_namespace": "org/app",
+    "web_url": "https://gitlab.com/org/app"
+  },
+  "object_attributes": {
+    "status": "success",
+    "name": "build-and-test",
+    "sha": "cafebabedeadbeef00112233445566778899aabb",
+    "ref": "main"
+  }
+}
+
