@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(TaskController.class)
+@org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc(addFilters = false)
 class TaskControllerValidationTest {
 
     @Autowired
@@ -37,4 +38,3 @@ class TaskControllerValidationTest {
                 .andExpect(status().isBadRequest());
     }
 }
-

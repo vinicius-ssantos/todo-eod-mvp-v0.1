@@ -30,3 +30,10 @@ eod:
       secret: ""
     gitlab:
       secret: ""
+  rateLimit:
+    perOriginPerMinute: 600
+  idempotency:
+    ttlSeconds: 86400
+  security:
+    jwt:
+      secret: ${APP_JWT_SECRET:change-me}

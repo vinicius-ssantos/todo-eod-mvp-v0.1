@@ -84,7 +84,7 @@ curl -sS -X POST http://localhost:8080/webhooks/github -H "Content-Type: applica
 | `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:5432/todo_eod` | Postgres |
 | `SPRING_DATASOURCE_USERNAME` | `postgres` |  |
 | `SPRING_DATASOURCE_PASSWORD` | `postgres` |  |
-| `SPRING_REDIS_HOST` | `localhost` | Cache para idempotência |
+| `SPRING_REDIS_HOST` | `localhost` | Redis (idempotência/rate-limit) |
 | `SPRING_REDIS_PORT` | `6379` |  |
 | `APP_JWT_SECRET` | `change-me` | Assinatura JWT (dev) |
 | `APP_ALLOWED_ORIGINS` | `http://localhost:4200` | CORS (se front) |
@@ -100,6 +100,11 @@ Endpoints principais:
 - `PUT /flags/{key}` define percentual da feature (0-100)
 - `GET /flags/{key}` consulta percentual atual
 - `GET /evaluations/{taskId}` histórico de avaliação de evidências (quando aplicável)
+
+Rate-limit e idempotência:
+- Limite por origem/minuto (default 600): `eod.rateLimit.perOriginPerMinute`
+- TTL de idempotência em segundos (default 86400): `eod.idempotency.ttlSeconds`
+- Ambos usam Redis se disponível; fallback in-memory por instância
 
 ## Webhooks suportados
 | Tipo | Payload mínimo | Uso |
