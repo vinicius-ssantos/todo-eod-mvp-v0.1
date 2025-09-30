@@ -97,6 +97,8 @@ Endpoints principais:
 - `POST /tasks` cria uma task com `dodPolicyId` e (opcional) `correlationId`
 - `GET /tasks/{id}`/`GET /tasks?key=...`
 - `POST /webhooks/github` recebe eventos como `PR_MERGED`
+- `PUT /flags/{key}` define percentual da feature (0-100)
+- `GET /flags/{key}` consulta percentual atual
 - `GET /evaluations/{taskId}` histórico de avaliação de evidências (quando aplicável)
 
 ## Webhooks suportados
