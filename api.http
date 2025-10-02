@@ -1,68 +1,94 @@
-### Criar task (use o UUID da policy seed abaixo)
-# Policy seed: 00000000-0000-0000-0000-000000000001 (Default DoD for Java Service)
-POST http://localhost:8080/tasks
+### Variables (v0.2 Secured)
+@baseUrl = http://localhost:8080
+@jwt = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZXYiLCJzY29wZSI6InRhc2tzOiogd2ViaG9va3M6aW5nZXN0IiwiaWF0IjoxNzU5MjA3MDE5LCJleHAiOjE3NTkyMTA2MTl9.J3MHiP3hXt53fQSQ-dHELSWY5aGSrN8QCDZ3p83Oev4
+@taskKey = TSK-SEC-REAL
+@taskId = REPLACE_WITH_TASK_ID
+
+### Health (public)
+GET {{baseUrl}}/actuator/health
+
+### Listar policies (public)
+GET {{baseUrl}}/dod-policies
+
+### Gerar JWT (nota)
+### node scripts/jwt/gen-jwt.js --secret change-me --sub dev --scope "tasks:* webhooks:ingest" --exp 3600
+
+### Criar task (JWT)
+POST {{baseUrl}}/tasks
+Authorization: Bearer {{jwt}}
 Content-Type: application/json
 Correlation-Id: 3f5d5a34-7d74-4f6c-b91d-9a1dbb2c7d3f
 
 {
-  "key": "TSK-123",
-  "title": "Implementar /login com Correlation-Id",
+  "key": "{{taskKey}}",
+  "title": "Cenario v0.2 real",
   "dodPolicyId": "00000000-0000-0000-0000-000000000001",
-  "assignee": "vinicius",
-  "labels": ["security","observability"],
+  "assignee": "dev",
+  "labels": ["security","integration"],
   "correlationId": "3f5d5a34-7d74-4f6c-b91d-9a1dbb2c7d3f"
 }
 
-### Listar tasks
-GET http://localhost:8080/tasks
+### Listar tasks (JWT)
+GET {{baseUrl}}/tasks
+Authorization: Bearer {{jwt}}
 
-### Detalhar task (troque {id})
-GET http://localhost:8080/tasks/{id}
+### Detalhar task (JWT) — troque {id}
+GET {{baseUrl}}/tasks/{id}
+Authorization: Bearer {{jwt}}
 
-### Transicionar estado
-PATCH http://localhost:8080/tasks/{id}/state
+### Transicionar estado (JWT) — troque {id}
+PATCH {{baseUrl}}/tasks/{id}/state
+Authorization: Bearer {{jwt}}
 Content-Type: application/json
 
 { "state": "VERIFICATION" }
 
-### Webhook: PR merged
-POST http://localhost:8080/webhooks/github
+### Webhook GitHub PR merged (HMAC)
+### SIG (bash): export GITHUB_SECRET=change-me; BODY='{"action":"closed","number":42,"pull_request":{"merged":true,"base":{"ref":"main"},"merge_commit_sha":"abc123def4567890","html_url":"https://github.com/org/app/pull/42"},"repository":{"full_name":"org/app"}}'; SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$GITHUB_SECRET" | sed 's/^.* /sha256=/')
+POST {{baseUrl}}/webhooks/github
+X-GitHub-Event: pull_request
+X-GitHub-Delivery: gh-real-1
+X-EOD-Task-Key: {{taskKey}}
+X-Hub-Signature-256: sha256=REPLACE_WITH_HMAC
 Content-Type: application/json
 
 {
-  "eventId": "gh-evt-123",
-  "type": "PR_MERGED",
-  "repo": "org/app",
-  "branch": "main",
-  "pr": 42,
-  "taskKey": "TSK-123"
+  "action":"closed",
+  "number":42,
+  "pull_request":{"merged":true,"base":{"ref":"main"},"merge_commit_sha":"abc123def4567890","html_url":"https://github.com/org/app/pull/42"},
+  "repository":{"full_name":"org/app"}
 }
 
-### Webhook: CI green
-POST http://localhost:8080/webhooks/github
+### Webhook GitHub CI green (HMAC)
+POST {{baseUrl}}/webhooks/github
+X-GitHub-Event: workflow_run
+X-GitHub-Delivery: gh-real-2
+X-EOD-Task-Key: {{taskKey}}
+X-Hub-Signature-256: sha256=REPLACE_WITH_HMAC
 Content-Type: application/json
 
 {
-  "eventId": "gh-evt-124",
-  "type": "CI_GREEN",
-  "workflow": "build.yml",
-  "sha": "abc123",
-  "taskKey": "TSK-123"
+  "action":"completed",
+  "workflow_run":{"conclusion":"success","head_sha":"cafebabedeadbeef0011223","head_branch":"main","html_url":"https://github.com/org/app/actions/runs/123"},
+  "workflow":{"name":"build-and-test"},
+  "repository":{"full_name":"org/app"}
 }
 
-### Webhook: Docs publicadas
-POST http://localhost:8080/webhooks/observability
+### Webhook: Docs publicadas (JWT)
+POST {{baseUrl}}/webhooks/observability
+Authorization: Bearer {{jwt}}
 Content-Type: application/json
 
 {
   "eventId": "doc-567",
   "type": "DOC_PUBLISHED",
-  "url": "https://docs.meuapp.io/tsks/TSK-123",
-  "taskKey": "TSK-123"
+  "url": "https://docs.meuapp.io/tsks/{{taskKey}}",
+  "taskKey": "{{taskKey}}"
 }
 
-### Webhook: Logs vistos
-POST http://localhost:8080/webhooks/observability
+### Webhook: Logs vistos (JWT)
+POST {{baseUrl}}/webhooks/observability
+Authorization: Bearer {{jwt}}
 Content-Type: application/json
 
 {
@@ -70,20 +96,114 @@ Content-Type: application/json
   "type": "LOG_SEEN",
   "query": "message:StartedApp",
   "count": 3,
-  "taskKey": "TSK-123"
+  "taskKey": "{{taskKey}}"
 }
 
-### Webhook: Feature flag habilitada
-POST http://localhost:8080/webhooks/flags
+### Webhook: Feature flag habilitada (JWT)
+POST {{baseUrl}}/webhooks/flags
+Authorization: Bearer {{jwt}}
 Content-Type: application/json
 
 {
   "eventId": "flag-333",
   "type": "FLAG_ENABLED",
-  "flagKey": "feature.TSK-123",
-  "percentage": 10,
-  "taskKey": "TSK-123"
+  "flagKey": "feature.{{taskKey}}",
+  "percentage": 25,
+  "taskKey": "{{taskKey}}"
+}
+### v0.2 Secured — variables
+@baseUrl = http://localhost:8080
+@taskKey = TSK-SEC-REAL
+@jwt = REPLACE_WITH_JWT
+
+### Generate JWT (Node, optional note)
+### node scripts/jwt/gen-jwt.js --secret change-me --sub dev --scope "tasks:* webhooks:ingest" --exp 3600
+
+### Create task (JWT)
+POST {{baseUrl}}/tasks
+Authorization: Bearer {{jwt}}
+Content-Type: application/json
+Correlation-Id: 3f5d5a34-7d74-4f6c-b91d-9a1dbb2c7d3f
+
+{
+  "key": "{{taskKey}}",
+  "title": "Cenario v0.2 real",
+  "dodPolicyId": "00000000-0000-0000-0000-000000000001",
+  "assignee": "dev",
+  "labels": ["security","integration"],
+  "correlationId": "3f5d5a34-7d74-4f6c-b91d-9a1dbb2c7d3f"
 }
 
-### Métricas (simples)
-GET http://localhost:8080/metrics/flow
+### GitHub pull_request merged (HMAC) — replace signature
+### SIG (bash): export GITHUB_SECRET=change-me; BODY='{"action":"closed","number":42,"pull_request":{"merged":true,"base":{"ref":"main"},"merge_commit_sha":"abc123def4567890","html_url":"https://github.com/org/app/pull/42"},"repository":{"full_name":"org/app"}}'; SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$GITHUB_SECRET" | sed 's/^.* /sha256=/')
+POST {{baseUrl}}/webhooks/github
+X-GitHub-Event: pull_request
+X-GitHub-Delivery: gh-real-1
+X-EOD-Task-Key: {{taskKey}}
+X-Hub-Signature-256: sha256=REPLACE_WITH_HMAC
+Content-Type: application/json
+
+{
+  "action":"closed",
+  "number":42,
+  "pull_request":{"merged":true,"base":{"ref":"main"},"merge_commit_sha":"abc123def4567890","html_url":"https://github.com/org/app/pull/42"},
+  "repository":{"full_name":"org/app"}
+}
+
+### GitHub workflow_run success (HMAC)
+### SIG computed like above with the exact body
+POST {{baseUrl}}/webhooks/github
+X-GitHub-Event: workflow_run
+X-GitHub-Delivery: gh-real-2
+X-EOD-Task-Key: {{taskKey}}
+X-Hub-Signature-256: sha256=REPLACE_WITH_HMAC
+Content-Type: application/json
+
+{
+  "action":"completed",
+  "workflow_run":{"conclusion":"success","head_sha":"cafebabedeadbeef0011223","head_branch":"main","html_url":"https://github.com/org/app/actions/runs/123"},
+  "workflow":{"name":"build-and-test"},
+  "repository":{"full_name":"org/app"}
+}
+
+### DOC_PUBLISHED (JWT)
+POST {{baseUrl}}/webhooks/observability
+Authorization: Bearer {{jwt}}
+Content-Type: application/json
+
+{
+  "eventId":"evt-doc-1",
+  "type":"DOC_PUBLISHED",
+  "url":"https://docs.meuapp.io/features/{{taskKey}}",
+  "taskKey":"{{taskKey}}"
+}
+
+### LOG_SEEN (JWT)
+POST {{baseUrl}}/webhooks/observability
+Authorization: Bearer {{jwt}}
+Content-Type: application/json
+
+{
+  "eventId":"evt-log-1",
+  "type":"LOG_SEEN",
+  "query":"message:StartedApp AND correlationId:3f5d5a34-7d74-4f6c-b91d-9a1dbb2c7d3f",
+  "count":1,
+  "taskKey":"{{taskKey}}"
+}
+
+### FLAG_ENABLED (JWT)
+POST {{baseUrl}}/webhooks/flags
+Authorization: Bearer {{jwt}}
+Content-Type: application/json
+
+{
+  "eventId":"evt-ff-1",
+  "type":"FLAG_ENABLED",
+  "flagKey":"feature.{{taskKey}}",
+  "percentage":25,
+  "taskKey":"{{taskKey}}"
+}
+
+### Get task (JWT) — replace {id}
+GET {{baseUrl}}/tasks/{id}
+Authorization: Bearer {{jwt}}
