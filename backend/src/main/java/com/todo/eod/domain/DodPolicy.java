@@ -2,7 +2,9 @@ package com.todo.eod.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -20,6 +22,7 @@ public class DodPolicy {
     private String name;
 
     /** JSON (YAML carregado e convertido) **/
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false, columnDefinition = "jsonb")
     private String spec;
 
