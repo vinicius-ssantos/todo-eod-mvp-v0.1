@@ -1,1 +1,1 @@
--- schema dump placeholder (automatizar quando houver container/db no CI) 2025-09-30T04:02:21+00:00
+-- schema dump placeholder (automatizar quando houver container/db no CI) 2025-10-03T10:35:13+00:00
