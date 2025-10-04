@@ -1,0 +1,185 @@
+### TODO EoD MVP — full endpoint smoke (.http)
+### Works in IntelliJ/JetBrains HTTP Client and VS Code REST Client.
+### Auth is OFF by default (eod.security.enabled=false). If you enable it, uncomment the Authorization headers.
+
+@host = http://localhost:8080
+@accept = application/json
+@contentType = application/json
+
+### --- Optional: bearer token when auth is enabled ---
+@token = change-me
+
+### --- Common dynamic vars ---
+# Will be filled after creating the task
+@taskId = 
+@taskKey = TSK-123
+@featureKey = my-feature
+@correlationId = {{$uuid}}
+@eventId = evt-{{$uuid}}
+
+### 1) Health
+# @name health
+GET {{host}}/actuator/health
+Accept: {{accept}}
+
+### 2) OpenAPI
+# @name openapi
+GET {{host}}/v3/api-docs
+Accept: {{accept}}
+
+### 3) Create task
+# @name createTask
+POST {{host}}/tasks
+Content-Type: {{contentType}}
+Accept: {{accept}}
+# Authorization: Bearer {{token}}
+
+{
+  "key": "TSK-{{$randomInt}}",
+  "title": "Implementar /login com Correlation-Id",
+  "dodPolicyId": "default-java-service",
+  "assignee": "vinicius",
+  "labels": ["security","observability"],
+  "correlationId": "{{correlationId}}"
+}
+
+> {%
+// store id and key for later requests
+const json = JSON.parse(response.body);
+if (json && json.id) client.global.set("taskId", String(json.id));
+if (json && json.key) client.global.set("taskKey", String(json.key));
+client.log("Saved taskId=" + client.global.get("taskId") + " taskKey=" + client.global.get("taskKey"));
+%}
+
+### 4) Get task by id
+# @name getTaskById
+GET {{host}}/tasks/{{taskId}}
+Accept: {{accept}}
+
+### 5) Get task by key
+# @name getTaskByKey
+GET {{host}}/tasks?key={{taskKey}}
+Accept: {{accept}}
+
+### 6) Set feature flag percent (PUT /flags/{key})
+# @name putFlag
+PUT {{host}}/flags/{{featureKey}}
+Content-Type: {{contentType}}
+Accept: {{accept}}
+# Authorization: Bearer {{token}}
+
+{
+  "percent": 25
+}
+
+### 7) Get feature flag percent
+# @name getFlag
+GET {{host}}/flags/{{featureKey}}
+Accept: {{accept}}
+# Authorization: Bearer {{token}}
+
+### 8) Send simplified PR_MERGED webhook (Quickstart-style)
+# @name webhookGithubSimple
+POST {{host}}/webhooks/github
+Content-Type: {{contentType}}
+Accept: {{accept}}
+# If you configured a GitHub webhook secret, use the signed example below instead.
+
+{
+  "eventId": "{{eventId}}",
+  "type": "PR_MERGED",
+  "repo": "org/app",
+  "branch": "main",
+  "pr": 42,
+  "taskKey": "{{taskKey}}"
+}
+
+### 9) Send LOG_SEEN via observability webhook
+# @name webhookObservability
+POST {{host}}/webhooks/observability
+Content-Type: {{contentType}}
+Accept: {{accept}}
+# Authorization: Bearer {{token}}  # only needed if auth is ON for /webhooks/observability
+
+{
+  "eventId": "{{eventId}}",
+  "type": "LOG_SEEN",
+  "correlationId": "{{correlationId}}",
+  "env": "prod",
+  "taskKey": "{{taskKey}}"
+}
+
+### 10) Send FF_PERCENT via flags webhook
+# @name webhookFlags
+POST {{host}}/webhooks/flags
+Content-Type: {{contentType}}
+Accept: {{accept}}
+# Authorization: Bearer {{token}}  # only needed if auth is ON for /webhooks/flags
+
+{
+  "eventId": "{{eventId}}",
+  "type": "FF_PERCENT",
+  "featureKey": "{{featureKey}}",
+  "percent": 60,
+  "taskKey": "{{taskKey}}"
+}
+
+### 11) (Optional) Signed GitHub webhook (headers + real payload)
+### Precompute the signature (replace SECRET):
+###   SECRET="change-me"
+###   BODY='{\"action\":\"closed\",\"number\":42,\"pull_request\":{\"merged\":true,\"base\":{\"ref\":\"main\"},\"merge_commit_sha\":\"abc123\",\"html_url\":\"https://github.com/org/app/pull/42\"},\"repository\":{\"full_name\":\"org/app\"}}'
+###   SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$SECRET" | sed 's/^.* /sha256=/')
+### Then set X-Hub-Signature-256: $SIG
+# @name webhookGithubSigned
+POST {{host}}/webhooks/github
+Content-Type: application/json
+Accept: {{accept}}
+X-GitHub-Event: pull_request
+X-GitHub-Delivery: gh-delivery-{{$uuid}}
+X-Hub-Signature-256: sha256=REPLACE_ME
+X-EOD-Task-Key: {{taskKey}}
+
+{
+  "action": "closed",
+  "number": 42,
+  "pull_request": {
+    "merged": true,
+    "base": { "ref": "main" },
+    "merge_commit_sha": "abc123def456",
+    "html_url": "https://github.com/org/app/pull/42"
+  },
+  "repository": { "full_name": "org/app" }
+}
+
+### 12) (Optional) Signed GitLab pipeline webhook
+### Precompute the signature (replace SECRET):
+###   SECRET="change-me"
+###   BODY='{...json below...}'
+###   SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$SECRET" -binary | base64)
+# @name webhookGitlabSigned
+POST {{host}}/webhooks/gitlab
+Content-Type: application/json
+Accept: {{accept}}
+X-Gitlab-Event: Pipeline Hook
+X-Gitlab-Event-UUID: gl-evt-{{$uuid}}
+X-Gitlab-Signature: REPLACE_ME
+X-EOD-Task-Key: {{taskKey}}
+
+{
+  "object_kind": "pipeline",
+  "project": {
+    "path_with_namespace": "org/app",
+    "web_url": "https://gitlab.com/org/app"
+  },
+  "object_attributes": {
+    "status": "success",
+    "name": "build-and-test",
+    "sha": "cafebabedeadbeef00112233445566778899aabb",
+    "ref": "main"
+  }
+}
+
+### 13) Check evaluations/history for the task
+# @name getEvaluations
+GET {{host}}/evaluations/{{taskId}}
+Accept: {{accept}}
