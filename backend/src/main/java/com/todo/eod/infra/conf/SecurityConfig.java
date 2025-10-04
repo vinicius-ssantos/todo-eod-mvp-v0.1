@@ -1,6 +1,7 @@
 package com.todo.eod.infra.conf;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -13,6 +14,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import javax.crypto.spec.SecretKeySpec;
 
 @Configuration
+@ConditionalOnProperty(name = "eod.security.enabled", havingValue = "true")
 public class SecurityConfig {
 
     @Bean
@@ -26,6 +28,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/webhooks/github", "/webhooks/gitlab").permitAll()
                 .requestMatchers(HttpMethod.POST, "/webhooks/observability", "/webhooks/flags").hasAuthority("SCOPE_webhooks:ingest")
                 .requestMatchers("/flags/**", "/tasks/**").hasAuthority("SCOPE_tasks:*")
+                .anyRequest().authenticated()
+                .requestMatchers(HttpMethod.POST, "/webhooks/**").permitAll()
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth -> oauth.jwt());

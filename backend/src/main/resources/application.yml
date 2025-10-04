@@ -35,5 +35,6 @@ eod:
   idempotency:
     ttlSeconds: 86400
   security:
+    enabled: false
     jwt:
       secret: ${APP_JWT_SECRET:change-me}
