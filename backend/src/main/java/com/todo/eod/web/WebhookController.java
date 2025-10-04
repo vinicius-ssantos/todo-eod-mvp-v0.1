@@ -53,7 +53,7 @@ public class WebhookController {
                     return ResponseEntity.accepted().body("ignored event: " + ghEvent);
                 }
                 var res = ingest.ingest(normalized.getEventId(), normalized.getType(), normalized.getTaskKey(), normalized);
-                if (!res.accepted()) return ResponseEntity.ok(res);
+                if (!res.accepted()) return ResponseEntity.accepted().body(res);
                 return ResponseEntity.ok(res);
             } catch (Exception e) {
                 return ResponseEntity.badRequest().body("invalid json");
@@ -63,7 +63,7 @@ public class WebhookController {
         try {
             WebhookPayload legacy = objectMapper.readValue(body, WebhookPayload.class);
             var res = ingest.ingest(legacy.getEventId(), legacy.getType(), legacy.getTaskKey(), legacy);
-            if (!res.accepted()) return ResponseEntity.ok(res);
+            if (!res.accepted()) return ResponseEntity.accepted().body(res);
             return ResponseEntity.ok(res);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("invalid payload");
@@ -95,7 +95,7 @@ public class WebhookController {
                 return ResponseEntity.accepted().body("ignored event: " + glEvent);
             }
             var res = ingest.ingest(normalized.getEventId(), normalized.getType(), normalized.getTaskKey(), normalized);
-            if (!res.accepted()) return ResponseEntity.ok(res);
+            if (!res.accepted()) return ResponseEntity.accepted().body(res);
             return ResponseEntity.ok(res);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("invalid json");
@@ -106,7 +106,7 @@ public class WebhookController {
     public ResponseEntity<?> observability(@RequestBody WebhookPayload body) {
         if (!rateLimiter.allow("observability")) return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body("rate limit");
         var res = ingest.ingest(body.getEventId(), body.getType(), body.getTaskKey(), body);
-        if (!res.accepted()) return ResponseEntity.ok(res);
+        if (!res.accepted()) return ResponseEntity.accepted().body(res);
         return ResponseEntity.ok(res);
     }
 
@@ -114,7 +114,7 @@ public class WebhookController {
     public ResponseEntity<?> flags(@RequestBody WebhookPayload body) {
         if (!rateLimiter.allow("flags")) return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body("rate limit");
         var res = ingest.ingest(body.getEventId(), body.getType(), body.getTaskKey(), body);
-        if (!res.accepted()) return ResponseEntity.ok(res);
+        if (!res.accepted()) return ResponseEntity.accepted().body(res);
         return ResponseEntity.ok(res);
     }
 
