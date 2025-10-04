@@ -1,0 +1,158 @@
+@baseUrl = http://localhost:8081
+@policyId = 00000000-0000-0000-0000-000000000001
+@taskId = 00000000-0000-0000-0000-000000000000
+@taskKey = TSK-{{}}
+@correlationId = {{}}
+@flagKey = feature-{{}}
+@webhookEventId = evt-{{}}
+@gitlabSecret = change-me
+
+### List DoD policies
+GET {{baseUrl}}/dod-policies
+Accept: application/json
+
+> {% client.test("store-default-policy", function() {
+     if (response.body.length > 0) {
+       client.global.set("policyId", response.body[0].id);
+     }
+   });
+%}
+
+### Get DoD policy by id
+GET {{baseUrl}}/dod-policies/{{policyId}}
+Accept: application/json
+
+### Create DoD policy
+POST {{baseUrl}}/dod-policies
+Content-Type: application/json
+Accept: application/json
+
+{
+  "id": "{{}}",
+  "name": "Demo DoD Policy {{}}",
+  "spec": {
+    "id": "demo-policy-{{}}",
+    "name": "Demo policy for HTTP client",
+    "requirements": [
+      {"type": "PR_MERGED", "provider": "github", "branch": "main"}
+    ]
+  }
+}
+
+### Create task
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+
+{
+  "key": "{{taskKey}}",
+  "title": "Implement webhook ingestion for {{taskKey}}",
+  "dodPolicyId": "{{policyId}}",
+  "assignee": "vinicius",
+  "labels": ["observability", "docs"],
+  "correlationId": "{{correlationId}}"
+}
+
+> {% client.test("store-task-identifiers", function() {
+     client.global.set("taskId", response.body.id);
+     client.global.set("taskKey", response.body.key);
+   });
+%}
+
+### Update task state
+PATCH {{baseUrl}}/tasks/{{taskId}}/state
+Content-Type: application/json
+Accept: application/json
+
+{
+  "state": "REVIEW"
+}
+
+### List tasks
+GET {{baseUrl}}/tasks
+Accept: application/json
+
+### Get task by id
+GET {{baseUrl}}/tasks/{{taskId}}
+Accept: application/json
+
+### List tasks filtered by state
+GET {{baseUrl}}/tasks?state=REVIEW
+Accept: application/json
+
+### Set feature flag percentage
+PUT {{baseUrl}}/flags/{{flagKey}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "percentage": 25
+}
+
+### Get feature flag
+GET {{baseUrl}}/flags/{{flagKey}}
+Accept: application/json
+
+### Ingest observability evidence
+POST {{baseUrl}}/webhooks/observability
+Content-Type: application/json
+Accept: application/json
+
+{
+  "eventId": "{{webhookEventId}}-obs",
+  "type": "LOG_SEEN",
+  "taskKey": "{{taskKey}}",
+  "query": "correlationId:{{correlationId}}",
+  "count": 3
+}
+
+### Ingest feature flag evidence
+POST {{baseUrl}}/webhooks/flags
+Content-Type: application/json
+Accept: application/json
+
+{
+  "eventId": "{{webhookEventId}}-flags",
+  "type": "FLAG_ENABLED",
+  "taskKey": "{{taskKey}}",
+  "flagKey": "{{flagKey}}",
+  "percentage": 75
+}
+
+### Ingest GitHub evidence (legacy payload without signatures)
+POST {{baseUrl}}/webhooks/github
+Content-Type: application/json
+Accept: application/json
+
+{
+  "eventId": "{{webhookEventId}}-gh",
+  "type": "PR_MERGED",
+  "taskKey": "{{taskKey}}",
+  "repo": "org/app",
+  "branch": "main",
+  "pr": 42
+}
+
+### Ingest GitLab evidence (token auth)
+POST {{baseUrl}}/webhooks/gitlab
+Content-Type: application/json
+Accept: application/json
+X-Gitlab-Token: {{gitlabSecret}}
+X-Gitlab-Event: Pipeline Hook
+X-Gitlab-Event-UUID: gl-{{}}
+X-EOD-Task-Key: {{taskKey}}
+
+{
+  "object_kind": "pipeline",
+  "project": {
+    "path_with_namespace": "org/app",
+    "web_url": "https://gitlab.com/org/app"
+  },
+  "object_attributes": {
+    "status": "success",
+    "name": "build-and-test",
+    "sha": "cafebabecafebabecafebabecafebabecafebabe",
+    "ref": "main"
+  }
+}
+
