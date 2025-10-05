@@ -23,6 +23,12 @@ APP_LOG="$ROOT_DIR/.codex-app.log"
 EMBEDDED_PG_LOG="$ROOT_DIR/.codex-embedded-pg.log"
 EMBEDDED_REDIS_LOG="$ROOT_DIR/.codex-embedded-redis.log"
 
+MVN_CMD=()
+MVN_DESC=""
+MVN_VERSION=${MVN_VERSION:-3.9.6}
+MVN_DOWNLOAD_DIR="$ROOT_DIR/.codex-maven"
+
+
 cleanup(){
   kill_app
   if [[ "$DB_STARTED" = "docker" ]]; then
@@ -47,6 +53,46 @@ cleanup(){
 trap cleanup EXIT
 
 # ---------- Funções ----------
+
+ensure_maven(){
+  if [[ -x "$ROOT_DIR/backend/mvnw" ]]; then
+    MVN_CMD=("$ROOT_DIR/backend/mvnw")
+    MVN_DESC="backend/mvnw"
+    return
+  fi
+
+  if command -v mvn >/dev/null 2>&1; then
+    local mvn_path
+    mvn_path=$(command -v mvn)
+    MVN_CMD=("$mvn_path")
+    MVN_DESC="$mvn_path"
+    return
+  fi
+
+  local archive_dir="$MVN_DOWNLOAD_DIR"
+  local archive_name="apache-maven-$MVN_VERSION-bin.tar.gz"
+  local archive_path="$archive_dir/$archive_name"
+  local maven_home="$archive_dir/apache-maven-$MVN_VERSION"
+
+  if [[ ! -x "$maven_home/bin/mvn" ]]; then
+    echo "==> Maven não encontrado; baixando Maven $MVN_VERSION localmente"
+    rm -rf "$archive_dir"
+    mkdir -p "$archive_dir"
+    curl -fsSL "https://archive.apache.org/dist/maven/maven-3/$MVN_VERSION/binaries/$archive_name" -o "$archive_path"
+    tar -xzf "$archive_path" -C "$archive_dir"
+    rm -f "$archive_path"
+  fi
+
+  MVN_CMD=("$maven_home/bin/mvn")
+  MVN_DESC="$maven_home/bin/mvn"
+}
+
+mvn_backend(){
+  "${MVN_CMD[@]}" -f "$ROOT_DIR/backend/pom.xml" "$@"
+}
+
+# ---------- Demais utilitários ----------
+
 port_open(){ (echo > /dev/tcp/127.0.0.1/$1) >/dev/null 2>&1; }
 wait_port(){ local p="$1"; for i in {1..60}; do port_open "$p" && return 0 || sleep 1; done; return 1; }
 kill_app(){
@@ -163,14 +209,15 @@ start_embedded_redis(){
   echo "==> Subindo Redis embutido (porta $SPRING_DATA_REDIS_PORT)"
   : > "$EMBEDDED_REDIS_LOG"
   (
-    cd backend
-    EMBEDDED_REDIS_PORT="$SPRING_DATA_REDIS_PORT" \
-    ./mvnw -q -DskipTests \
+
+    export EMBEDDED_REDIS_PORT="$SPRING_DATA_REDIS_PORT"
+    mvn_backend -q -DskipTests \
       -Dexec.classpathScope=test \
       -Dexec.cleanupDaemonThreads=false \
       -Dexec.mainClass=com.todo.eod.devinfra.EmbeddedRedisRunner \
-      test-compile exec:java > "$EMBEDDED_REDIS_LOG" 2>&1
-  ) &
+      test-compile exec:java
+  ) > "$EMBEDDED_REDIS_LOG" 2>&1 &
+
   EMBEDDED_REDIS_PID=$!
   REDIS_STARTED="embedded"
 
@@ -187,17 +234,18 @@ start_embedded_postgres(){
   echo "==> Subindo Postgres embutido (porta $DB_PORT)"
   : > "$EMBEDDED_PG_LOG"
   (
-    cd backend
-    EMBEDDED_PG_PORT="$DB_PORT" \
-    EMBEDDED_PG_DB="$DB_NAME" \
-    EMBEDDED_PG_USER="$SPRING_DATASOURCE_USERNAME" \
-    EMBEDDED_PG_PASSWORD="$SPRING_DATASOURCE_PASSWORD" \
-    ./mvnw -q -DskipTests \
+
+    export EMBEDDED_PG_PORT="$DB_PORT"
+    export EMBEDDED_PG_DB="$DB_NAME"
+    export EMBEDDED_PG_USER="$SPRING_DATASOURCE_USERNAME"
+    export EMBEDDED_PG_PASSWORD="$SPRING_DATASOURCE_PASSWORD"
+    mvn_backend -q -DskipTests \
       -Dexec.classpathScope=test \
       -Dexec.cleanupDaemonThreads=false \
       -Dexec.mainClass=com.todo.eod.devinfra.EmbeddedPostgresRunner \
-      test-compile exec:java > "$EMBEDDED_PG_LOG" 2>&1
-  ) &
+      test-compile exec:java
+  ) > "$EMBEDDED_PG_LOG" 2>&1 &
+
   EMBEDDED_PG_PID=$!
   DB_STARTED="embedded"
 
@@ -245,21 +293,26 @@ retry_curl(){
 }
 
 # ---------- Start app (auth OFF) ----------
+
+ensure_maven
+echo "==> Usando Maven: $MVN_DESC"
+
 ensure_local_redis
 ensure_local_postgres
 kill_app
 echo "==> Subindo app (auth OFF)"; rm -f "$APP_LOG"
 (
-  cd backend
-  ./mvnw -q spring-boot:run \
+
+  mvn_backend -q spring-boot:run \
+
     -Dserver.port="$SERVER_PORT" \
     -Dspring.datasource.url="$SPRING_DATASOURCE_URL" \
     -Dspring.datasource.username="$SPRING_DATASOURCE_USERNAME" \
     -Dspring.datasource.password="$SPRING_DATASOURCE_PASSWORD" \
     -Dspring.data.redis.host="$SPRING_DATA_REDIS_HOST" \
-    -Dspring.data.redis.port="$SPRING_DATA_REDIS_PORT" \
-    > "$APP_LOG" 2>&1
-) &
+    -Dspring.data.redis.port="$SPRING_DATA_REDIS_PORT"
+) > "$APP_LOG" 2>&1 &
+
 APP_PID=$!
 
 echo "==> Esperando porta $SERVER_PORT..."
