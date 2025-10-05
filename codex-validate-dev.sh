@@ -22,10 +22,12 @@ ROOT_DIR=$(pwd)
 APP_LOG="$ROOT_DIR/.codex-app.log"
 EMBEDDED_PG_LOG="$ROOT_DIR/.codex-embedded-pg.log"
 EMBEDDED_REDIS_LOG="$ROOT_DIR/.codex-embedded-redis.log"
+
 MVN_CMD=()
 MVN_DESC=""
 MVN_VERSION=${MVN_VERSION:-3.9.6}
 MVN_DOWNLOAD_DIR="$ROOT_DIR/.codex-maven"
+
 
 cleanup(){
   kill_app
@@ -51,6 +53,7 @@ cleanup(){
 trap cleanup EXIT
 
 # ---------- Funções ----------
+
 ensure_maven(){
   if [[ -x "$ROOT_DIR/backend/mvnw" ]]; then
     MVN_CMD=("$ROOT_DIR/backend/mvnw")
@@ -89,6 +92,7 @@ mvn_backend(){
 }
 
 # ---------- Demais utilitários ----------
+
 port_open(){ (echo > /dev/tcp/127.0.0.1/$1) >/dev/null 2>&1; }
 wait_port(){ local p="$1"; for i in {1..60}; do port_open "$p" && return 0 || sleep 1; done; return 1; }
 kill_app(){
@@ -205,6 +209,7 @@ start_embedded_redis(){
   echo "==> Subindo Redis embutido (porta $SPRING_DATA_REDIS_PORT)"
   : > "$EMBEDDED_REDIS_LOG"
   (
+
     export EMBEDDED_REDIS_PORT="$SPRING_DATA_REDIS_PORT"
     mvn_backend -q -DskipTests \
       -Dexec.classpathScope=test \
@@ -212,6 +217,7 @@ start_embedded_redis(){
       -Dexec.mainClass=com.todo.eod.devinfra.EmbeddedRedisRunner \
       test-compile exec:java
   ) > "$EMBEDDED_REDIS_LOG" 2>&1 &
+
   EMBEDDED_REDIS_PID=$!
   REDIS_STARTED="embedded"
 
@@ -228,6 +234,7 @@ start_embedded_postgres(){
   echo "==> Subindo Postgres embutido (porta $DB_PORT)"
   : > "$EMBEDDED_PG_LOG"
   (
+
     export EMBEDDED_PG_PORT="$DB_PORT"
     export EMBEDDED_PG_DB="$DB_NAME"
     export EMBEDDED_PG_USER="$SPRING_DATASOURCE_USERNAME"
@@ -238,6 +245,7 @@ start_embedded_postgres(){
       -Dexec.mainClass=com.todo.eod.devinfra.EmbeddedPostgresRunner \
       test-compile exec:java
   ) > "$EMBEDDED_PG_LOG" 2>&1 &
+
   EMBEDDED_PG_PID=$!
   DB_STARTED="embedded"
 
@@ -285,14 +293,18 @@ retry_curl(){
 }
 
 # ---------- Start app (auth OFF) ----------
+
 ensure_maven
 echo "==> Usando Maven: $MVN_DESC"
+
 ensure_local_redis
 ensure_local_postgres
 kill_app
 echo "==> Subindo app (auth OFF)"; rm -f "$APP_LOG"
 (
+
   mvn_backend -q spring-boot:run \
+
     -Dserver.port="$SERVER_PORT" \
     -Dspring.datasource.url="$SPRING_DATASOURCE_URL" \
     -Dspring.datasource.username="$SPRING_DATASOURCE_USERNAME" \
@@ -300,6 +312,7 @@ echo "==> Subindo app (auth OFF)"; rm -f "$APP_LOG"
     -Dspring.data.redis.host="$SPRING_DATA_REDIS_HOST" \
     -Dspring.data.redis.port="$SPRING_DATA_REDIS_PORT"
 ) > "$APP_LOG" 2>&1 &
+
 APP_PID=$!
 
 echo "==> Esperando porta $SERVER_PORT..."
